@@ -161,7 +161,7 @@ function getServiceRoleKey() {
 }
 
 function getAnonKey() {
-  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? getServiceRoleKey();
+  return getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
 export function isUuid(value: unknown): value is string {

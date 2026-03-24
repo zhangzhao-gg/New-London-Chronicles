@@ -801,8 +801,16 @@ begin
     end if;
   end if;
 
-  if not found then
-    perform public.rpc_raise('NOT_FOUND', 'No assignable task found.');
+  if v_template.id is null then
+    if v_resources.food_supply = 0 then
+      if v_resources.raw_food > 0 then
+        perform public.rpc_raise('NOT_FOUND', 'Missing task_template for code=''cookhouse-shift''.' );
+      else
+        perform public.rpc_raise('NOT_FOUND', 'Missing task_template for code=''hunt''.' );
+      end if;
+    else
+      perform public.rpc_raise('NOT_FOUND', 'Missing collect or build task template for auto assign.');
+    end if;
   end if;
 
   v_session_id := public.rpc_join_task(
