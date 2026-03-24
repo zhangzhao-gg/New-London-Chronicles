@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 `CLAUDE.md` 与相关 docs
  */
 
-import { runTaskStrategyTick } from "../lib/cron";
+const { runTaskStrategyTick }: typeof import("../lib/cron") = require("../lib/cron");
 
 async function main(): Promise<void> {
   const result = await runTaskStrategyTick();

@@ -571,7 +571,8 @@ $$;
 
 create or replace function public.rpc_end_session(
   p_user_id uuid,
-  p_session_id uuid
+  p_session_id uuid,
+  p_end_reason text default null
 )
 returns jsonb
 language plpgsql
@@ -592,7 +593,14 @@ declare
   v_participants_label text;
   v_building_completed boolean := false;
   v_should_insert_log boolean := false;
+  v_requested_end_reason text;
 begin
+  if p_end_reason is not null and p_end_reason not in ('timer_completed', 'manual_stop') then
+    perform public.rpc_raise('VALIDATION_ERROR', 'endReason must be timer_completed or manual_stop.');
+  end if;
+
+  v_requested_end_reason := p_end_reason;
+
   select *
   into v_session
   from public.sessions
@@ -619,7 +627,7 @@ begin
   end if;
 
   if v_session.status <> 'ended' then
-    v_end_reason := coalesce(v_session.end_reason, 'timer_completed');
+    v_end_reason := coalesce(v_session.end_reason, v_requested_end_reason, 'timer_completed');
     v_should_insert_log := true;
 
     update public.sessions
