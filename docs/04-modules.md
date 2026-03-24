@@ -40,6 +40,7 @@
 - 规则：
   - `GET /api/city` 允许附带刷新 `users.last_seen_at`
   - `GET /api/tasks` 必须计算 `canJoin`、`disabledReason`、`actionLabel`
+  - `GET /api/tasks` 对 `build/work` 的非空 `instance` 必须返回 `id`、`slotId`、`progressMinutes`、`remainingMinutes`
   - `GET /api/city` 必须返回 `healthStatus`、`currentPolicyPlaceholder`、语言占位字段
   - `GET /api/city` 必须返回按 district 聚合的 `status + workingCount`，供地图 hover tooltip 使用
   - `GET /api/session/current` 未传 `sessionId` 时负责恢复 `build/work` 类型的 `pending/active` session
@@ -64,7 +65,7 @@
   - `assign-next` 只对 `autoAssign = true` 的用户开放
   - `start` 只做幂等开始
   - `heartbeat` 是唯一贡献写入入口
-  - `end` 是唯一日志写入入口
+  - `end` 是唯一日志写入入口，且请求体必须显式传 `endReason = 'manual_stop' | 'timer_completed'`
 - 三类心跳处理：
   - 采集类：增加库存，更新 `total_minutes`、`total_heartbeats`
   - 建造/工作类：推进 `progress_minutes`，完成时落 `buildings`
@@ -85,6 +86,7 @@
   - 转化类不创建实例
   - 每个建造模板最多 `2` 个进行中实例
   - 资源不足时不创建建造实例，不做负库存
+  - `food_supply` 不足固定按 `food_supply = 0` 判定
 - 决策顺序固定：
   1. 按优先级扫描建造模板：`build-tent` -> `build-collection-hut` -> `build-medical-post` -> `build-hunters-hut` -> `build-cookhouse` -> `build-workshop` -> `build-lighthouse`
   2. 仅当 `city_resources` 足够覆盖 `build_cost` 才创建
@@ -153,6 +155,7 @@
 - 规则：
   - 实现前必须对照 `UI/city-任务.html`
   - 每行显示任务名、产出或效果、当前参与人数、操作按钮
+  - `build/work` 行在 `instance != null` 时消费 `slotId`、`progressMinutes`、`remainingMinutes`
   - `disabledReason` 为 `insufficient_resource` 时显示缺少资源说明
   - 点击按钮后调用 `POST /api/tasks/join`
   - 成功后跳转 `/focus?sessionId=...`
@@ -173,6 +176,8 @@
   - 本地倒计时状态持久化到 `localStorage["nlc:focus-state:<sessionId>"]`
   - 定时器运行中每 10 分钟发一次 heartbeat
   - 建造类 session 每 30 秒轮询一次 `/api/tasks`，若实例已完成则立刻 `POST /api/session/end`
+  - 手动停止调用 `POST /api/session/end` 时必须传 `endReason = 'manual_stop'`
+  - 倒计时自然结束调用 `POST /api/session/end` 时必须传 `endReason = 'timer_completed'`
   - 手动停止也必须进入 `/complete`
   - `/complete` 读取上一页写入的 `sessionStorage["nlc:last-summary"]`；缺失则跳回 `/city`
   - 若 `autoAssign = true`，完成页自动调用 `POST /api/tasks/assign-next` 并跳回 `/focus?sessionId=...`

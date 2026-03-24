@@ -228,11 +228,48 @@ Success `200`:
 }
 ```
 
+建造 / 工作类示例：
+
+```json
+{
+  "tasks": [
+    {
+      "template": {
+        "id": "b872de23-4e83-4b85-8c85-f0a51d8d10ef",
+        "code": "build-tent",
+        "name": "建造帐篷",
+        "type": "build",
+        "district": "residential",
+        "outputResource": "progress",
+        "outputPerHeartbeat": 10,
+        "durationMinutes": 120,
+        "buildCost": {
+          "wood": 10
+        },
+        "heartbeatCost": {}
+      },
+      "instance": {
+        "id": "8d6f0f1d-2f2a-49de-9804-13bafb4f6982",
+        "slotId": "residential-01",
+        "progressMinutes": 40,
+        "remainingMinutes": 80
+      },
+      "participants": 2,
+      "canJoin": true,
+      "disabledReason": null,
+      "actionLabel": "加入建造"
+    }
+  ]
+}
+```
+
 规则：
 
 - 采集类永远返回 `instance = null`
 - 转化类与采集类一致，永远返回 `instance = null`
+- 建造类与工作类在 `instance != null` 时固定返回 `id`、`slotId`、`progressMinutes`、`remainingMinutes`
 - 转化类原料不足时返回 `canJoin = false`，`disabledReason = "insufficient_resource"`
+- `food_supply` 不足固定按 `food_supply = 0` 判定；自动分配时 `food_supply = 0 && raw_food > 0` 优先 `cookhouse-shift`，`food_supply = 0 && raw_food = 0` 优先 `hunt`
 - `medical-shift` 在无病人时返回 `canJoin = false`，`disabledReason = "no_patients"`
 
 ## 7. `POST /api/tasks/join`
@@ -309,6 +346,7 @@ Success `200`:
 规则：
 
 - 仅当 `user.autoAssign = true` 时允许调用
+- 当 `food_supply = 0` 时：`raw_food > 0` 优先分配 `cookhouse-shift`，`raw_food = 0` 优先分配 `hunt`
 - 选择优先级固定为：
   1. 城市当前最缺乏资源对应的采集任务
   2. 资源充足时，优先选择已存在的进行中建造实例
@@ -376,7 +414,8 @@ Request:
 
 ```json
 {
-  "sessionId": "8079c0ca-c301-4cc1-a675-11d313afad9d"
+  "sessionId": "8079c0ca-c301-4cc1-a675-11d313afad9d",
+  "endReason": "manual_stop"
 }
 ```
 
@@ -435,7 +474,8 @@ Request:
 
 ```json
 {
-  "sessionId": "8079c0ca-c301-4cc1-a675-11d313afad9d"
+  "sessionId": "8079c0ca-c301-4cc1-a675-11d313afad9d",
+  "endReason": "manual_stop"
 }
 ```
 
@@ -504,7 +544,8 @@ Request:
 
 ```json
 {
-  "sessionId": "8079c0ca-c301-4cc1-a675-11d313afad9d"
+  "sessionId": "8079c0ca-c301-4cc1-a675-11d313afad9d",
+  "endReason": "manual_stop"
 }
 ```
 
@@ -546,6 +587,9 @@ Success `200`:
 
 - 幂等
 - 若 session 已结束，返回第一次结算出的相同 `summary`
+- 请求体 `endReason` 只允许 `manual_stop` 或 `timer_completed`
+- 服务端结束原因优先级固定为：`sessions.end_reason`（若 heartbeat 已写入） > 请求体 `endReason` > `timer_completed`
+- `resource_exhausted`、`building_completed`、`timeout` 只能由服务端状态产生，客户端不可直接传入
 - `city_logs` 在该接口内写入，且每个 session 只写一条日志
 
 ## 13. `GET /api/logs`

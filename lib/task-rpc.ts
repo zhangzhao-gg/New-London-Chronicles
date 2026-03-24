@@ -19,6 +19,7 @@ export type AppErrorCode =
 
 type TaskType = "collect" | "build" | "convert" | "work";
 type SessionEndReason = "timer_completed" | "manual_stop" | "resource_exhausted" | "building_completed" | "timeout";
+type ClientSessionEndReason = "timer_completed" | "manual_stop";
 
 type CookieLike = {
   name: string;
@@ -197,6 +198,14 @@ export function optionalUuid(value: unknown, fieldName: string) {
 
   if (!isUuid(value)) {
     throw new AppError("VALIDATION_ERROR", `${fieldName} must be a valid UUID or null.`);
+  }
+
+  return value;
+}
+
+export function requireClientSessionEndReason(value: unknown): ClientSessionEndReason {
+  if (value !== "timer_completed" && value !== "manual_stop") {
+    throw new AppError("VALIDATION_ERROR", "endReason must be 'timer_completed' or 'manual_stop'.");
   }
 
   return value;
@@ -513,10 +522,11 @@ export async function heartbeatSession(userId: string, sessionId: string) {
   };
 }
 
-export async function endSession(userId: string, sessionId: string) {
+export async function endSession(userId: string, sessionId: string, endReason: ClientSessionEndReason) {
   const summary = await callRpc<EndSummary | null>("rpc_end_session", {
     p_user_id: userId,
     p_session_id: sessionId,
+    p_end_reason: endReason,
   });
 
   if (!summary) {

@@ -235,7 +235,7 @@ insert into public.city_resources (
 - `rpc_join_task(p_user_id uuid, p_template_id uuid, p_instance_id uuid default null) returns uuid`
 - `rpc_start_session(p_user_id uuid, p_session_id uuid) returns void`
 - `rpc_session_heartbeat(p_user_id uuid, p_session_id uuid)`
-- `rpc_end_session(p_user_id uuid, p_session_id uuid)`
+- `rpc_end_session(p_user_id uuid, p_session_id uuid, p_end_reason text default null)`
 - `rpc_assign_next_task(p_user_id uuid) returns jsonb`
 - `rpc_task_strategy_tick() returns jsonb`
 - `rpc_daily_city_upkeep() returns jsonb`

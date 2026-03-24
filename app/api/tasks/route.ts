@@ -20,7 +20,12 @@ import {
 
 type TaskListItem = {
   template: ReturnType<typeof mapTemplateDto>;
-  instance: { id: string } | null;
+  instance: {
+    id: string;
+    slotId: string | null;
+    progressMinutes: number;
+    remainingMinutes: number;
+  } | null;
   participants: number;
   canJoin: boolean;
   disabledReason: "insufficient_resource" | "no_patients" | null;
@@ -154,6 +159,9 @@ export async function GET() {
         template: templateDto,
         instance: {
           id: instance.id,
+          slotId: instance.slot_id,
+          progressMinutes: instance.progress_minutes,
+          remainingMinutes: instance.remaining_minutes,
         },
         participants: liveInstanceParticipants.get(instance.id) ?? 0,
         canJoin: true,

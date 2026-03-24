@@ -77,6 +77,7 @@ alter table public.city_logs enable row level security;
 
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` 已配置
 - `CRON_SHARED_SECRET` 已配置
+- 项目依赖已安装，且包含 `ts-node`
 - 服务器 cron 明确按 `Asia/Shanghai` 执行
 - Supabase 控制台已开启 Anonymous Sign-Ins
 - 001/002/003 migration 执行成功
