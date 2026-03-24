@@ -86,6 +86,26 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+function formatFetchFailure(error: unknown, context: "auth" | "rest"): Error {
+  if (error instanceof Error) {
+    const cause =
+      error.cause instanceof Error
+        ? error.cause.message
+        : typeof error.cause === "string" && error.cause.trim()
+          ? error.cause
+          : "";
+
+    const detail = [error.message, cause].filter(Boolean).join(" | ");
+    return new Error(`Supabase ${context} fetch failed: ${detail || "Unknown fetch error."}`);
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return new Error(`Supabase ${context} fetch failed: ${error}`);
+  }
+
+  return new Error(`Supabase ${context} fetch failed: Unknown fetch error.`);
+}
+
 function getSupabaseUrl(): string {
   return process.env.SUPABASE_URL ?? requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
 }
@@ -268,11 +288,17 @@ async function authRequest<T>(
     headers.set("Authorization", `Bearer ${options.accessToken}`);
   }
 
-  const response = await fetch(`${getSupabaseUrl()}/auth/v1${path}`, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getSupabaseUrl()}/auth/v1${path}`, {
+      ...init,
+      headers,
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw formatFetchFailure(error, "auth");
+  }
 
   return {
     ok: response.ok,
@@ -292,11 +318,17 @@ async function restRequest<T>(path: string, init: RequestInit): Promise<{ ok: bo
     headers.set("content-type", "application/json");
   }
 
-  const response = await fetch(`${getSupabaseUrl()}/rest/v1${path}`, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getSupabaseUrl()}/rest/v1${path}`, {
+      ...init,
+      headers,
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw formatFetchFailure(error, "rest");
+  }
 
   return {
     ok: response.ok,

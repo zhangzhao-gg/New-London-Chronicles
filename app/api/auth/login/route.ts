@@ -16,6 +16,18 @@ import {
   validateUsername,
 } from "@/lib/auth";
 
+function formatUnexpectedLoginError(error: unknown): string {
+  if (process.env.NODE_ENV === "production") {
+    return "Login failed.";
+  }
+
+  if (error instanceof Error) {
+    return error.message || "Login failed.";
+  }
+
+  return typeof error === "string" && error.trim() ? error : "Login failed.";
+}
+
 export async function POST(request: Request) {
   let payload: unknown;
 
@@ -77,8 +89,7 @@ export async function POST(request: Request) {
     appendSupabaseSessionCookie(response, anonymousSession);
 
     return response;
-  } catch {
-    return errorResponse(500, "CONFLICT", "Login failed.");
+  } catch (error) {
+    return errorResponse(500, "CONFLICT", formatUnexpectedLoginError(error));
   }
 }
-

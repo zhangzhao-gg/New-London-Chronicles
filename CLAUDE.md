@@ -75,6 +75,10 @@ docs/README.md - 技术规范总索引，说明拆分地图与已知缺口
 </config>
 
 <config>
+.env.local - 本地开发环境变量，保存 Supabase 与本地运行配置，不纳入版本控制
+</config>
+
+<config>
 CLAUDE.md - 项目 L1 宪法，维护目录地图与 GEB 文档协议
 </config>
 
