@@ -11,6 +11,7 @@ import {
   appendSupabaseSessionCookie,
   clearSupabaseSessionCookie,
   errorResponse,
+  hasStoredSession,
   resolveAuthSessionFromRequest,
 } from "@/lib/auth";
 
@@ -36,18 +37,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (isProtectedApi(pathname)) {
+    if (!hasStoredSession(request)) {
+      const response = errorResponse(401, "UNAUTHORIZED", "Login required.");
+
+      clearSupabaseSessionCookie(response);
+
+      return response;
+    }
+
+    return NextResponse.next();
+  }
+
   try {
     const authSession = await resolveAuthSessionFromRequest(request);
 
     if (!authSession) {
-      if (isProtectedApi(pathname)) {
-        const response = errorResponse(401, "UNAUTHORIZED", "Login required.");
-
-        clearSupabaseSessionCookie(response);
-
-        return response;
-      }
-
       const response = NextResponse.redirect(new URL("/", request.url));
 
       clearSupabaseSessionCookie(response);
@@ -63,19 +68,7 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch {
-    if (isProtectedApi(pathname)) {
-      const response = errorResponse(401, "UNAUTHORIZED", "Login required.");
-
-      clearSupabaseSessionCookie(response);
-
-      return response;
-    }
-
-    const response = NextResponse.redirect(new URL("/", request.url));
-
-    clearSupabaseSessionCookie(response);
-
-    return response;
+    return NextResponse.redirect(new URL("/", request.url));
   }
 }
 

@@ -238,7 +238,17 @@ async function parseJsonResponse<T>(response: Response): Promise<T | null> {
     return null;
   }
 
-  return JSON.parse(text) as T;
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (!contentType.includes("application/json") && !contentType.includes("+json")) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }
 
 async function authRequest<T>(
@@ -442,6 +452,10 @@ export async function findOrCreateUserByUsername(username: string): Promise<User
   }
 
   return findUserByUsername(username);
+}
+
+export function hasStoredSession(request: Request): boolean {
+  return readStoredSession(request) !== null;
 }
 
 export function validateUsername(value: unknown): string | null {

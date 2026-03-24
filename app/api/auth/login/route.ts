@@ -44,10 +44,18 @@ export async function POST(request: Request) {
       return errorResponse(500, "CONFLICT", "Failed to resolve business user.");
     }
 
-    const metadataBound = await bindAuthUserToBusinessUser(anonymousSession, userRow);
+    const boundAppUserId = anonymousSession.user.user_metadata?.app_user_id;
 
-    if (!metadataBound) {
-      return errorResponse(500, "CONFLICT", "Failed to bind auth metadata.");
+    if (typeof boundAppUserId === "string" && boundAppUserId && boundAppUserId !== userRow.id) {
+      return errorResponse(500, "CONFLICT", "Anonymous session is already bound to another user.");
+    }
+
+    if (boundAppUserId !== userRow.id) {
+      const metadataBound = await bindAuthUserToBusinessUser(anonymousSession, userRow);
+
+      if (!metadataBound) {
+        return errorResponse(500, "CONFLICT", "Failed to bind auth metadata.");
+      }
     }
 
     const touchedUser = await touchUserLastSeen(userRow.id);
