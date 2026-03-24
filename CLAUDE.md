@@ -63,6 +63,10 @@ docs/README.md - 技术规范总索引，说明拆分地图与已知缺口
 </config>
 
 <config>
+.gitignore - 仓库忽略规则，当前至少屏蔽 macOS `.DS_Store` 噪音
+</config>
+
+<config>
 CLAUDE.md - 项目 L1 宪法，维护目录地图与 GEB 文档协议
 </config>
 
