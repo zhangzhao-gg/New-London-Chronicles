@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f4a462",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221810",
+                        "industrial-slate": "#1a1a1a",
+                        "amber-glow": "#ff9d00",
+                    },
+                    fontFamily: {
+                        "display": ["Newsreader"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        .mechanical-border {
+            border-image: linear-gradient(to bottom, #483423, #221810) 1;
+            border-style: solid;
+            border-width: 1px;
+        }
+        .gear-bg {
+            background-image: radial-gradient(circle at 10px 10px, rgba(244, 164, 98, 0.05) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .district-zone {
+            clip-path: polygon(5% 0%, 95% 0%, 100% 20%, 100% 80%, 95% 100%, 5% 100%, 0% 80%, 0% 20%);
+        }
+        .modal-inner-glow {
+            box-shadow: inset 0 0 15px rgba(244, 164, 98, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden">
+<div class="relative flex min-h-screen flex-col">
+<header class="sticky top-0 z-50 bg-background-dark/95 border-b-2 border-primary/30 px-4 py-2 backdrop-blur-md">
+<div class="max-w-[1440px] mx-auto flex items-center justify-between">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 rounded border border-primary/20">
+<span class="material-symbols-outlined text-primary text-3xl">settings_slow_motion</span>
+</div>
+<div>
+<h2 class="text-xl font-bold tracking-tight uppercase text-primary">New London</h2>
+<p class="text-[10px] text-primary/60 uppercase tracking-widest font-bold">Generator Status: Nominal</p>
+</div>
+</div>
+<nav class="hidden lg:flex items-center gap-1 border-l border-primary/20 pl-6 ml-6">
+<a class="px-4 py-2 text-primary hover:bg-primary/10 rounded flex items-center gap-2 transition-colors" href="#">
+<span class="material-symbols-outlined text-sm">precision_manufacturing</span>
+<span class="text-xs font-bold uppercase tracking-wider">Logistics</span>
+</a>
+<a class="px-4 py-2 text-slate-400 hover:text-primary transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-sm">gavel</span>
+<span class="text-xs font-bold uppercase tracking-wider">Council</span>
+</a>
+<a class="px-4 py-2 text-slate-400 hover:text-primary transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-sm">history_edu</span>
+<span class="text-xs font-bold uppercase tracking-wider">Archives</span>
+</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-black/40 border border-primary/10 rounded p-1 gap-1">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+</div>
+<div class="h-10 w-10 rounded border-2 border-primary/40 p-0.5 overflow-hidden">
+<img class="w-full h-full object-cover rounded-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwRgeTWQVVdMFnNCD6g_DG-XCqove2SCd0dwbELK8C990veMZd4f2osXDxyOAVWpIahzU_XHpKvLXcBEg-nhecKW2Ox1Mjta8CGx4gYKPxLgijQpHiBdxwiLQ2MHXmqQYwt6NUKTVXeFvrZSwUaIGTxHGLCqxYwvzE-ejy8Xth-uFhNySGEuil7SHO6bIXcgr26bu8zfGaa558rEkzz1ZYX0YxrbwqVpTleBR4ic0qjGyoZ2NqpNM9StQT3WuMTlANUlEfrqhQgQo"/>
+</div>
+</div>
+</div>
+</header>
+<div class="bg-gradient-to-b from-background-dark to-black/60 border-b border-primary/10 py-3 gear-bg">
+<div class="max-w-[1440px] mx-auto px-4 flex flex-wrap justify-center gap-4">
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-primary/40">
+<span class="material-symbols-outlined text-primary/80">workspace_premium</span>
+<div>
+<p class="text-[10px] uppercase text-slate-500 font-bold">Coal Reserve</p>
+<p class="text-lg font-bold text-slate-100">14,280</p>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-primary/40">
+<span class="material-symbols-outlined text-primary/80">forest</span>
+<div>
+<p class="text-[10px] uppercase text-slate-500 font-bold">木材 (Wood)</p>
+<p class="text-lg font-bold text-slate-100">5,620</p>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-primary/40">
+<span class="material-symbols-outlined text-primary/80">restaurant</span>
+<div>
+<p class="text-[10px] uppercase text-slate-500 font-bold">Rations</p>
+<p class="text-lg font-bold text-slate-100">2,841</p>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-primary/40">
+<span class="material-symbols-outlined text-primary/80">bakery_dining</span>
+<div>
+<p class="text-[10px] uppercase text-slate-500 font-bold">食物原料 (Food Raw Material)</p>
+<p class="text-lg font-bold text-slate-100">1,120</p>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-primary/40">
+<span class="material-symbols-outlined text-primary/80">construction</span>
+<div>
+<p class="text-[10px] uppercase text-slate-500 font-bold">Steel</p>
+<p class="text-lg font-bold text-slate-100">842</p>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-primary/40">
+<span class="material-symbols-outlined text-primary/80">bolt</span>
+<div>
+<p class="text-[10px] uppercase text-slate-500 font-bold">Steam Cores</p>
+<p class="text-lg font-bold text-slate-100">12</p>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-black/40 border-l-2 border-amber-glow/60">
+<span class="material-symbols-outlined text-amber-glow">thermostat</span>
+<div>
+<p class="text-[10px] uppercase text-amber-glow/60 font-bold">Temperature</p>
+<p class="text-lg font-bold text-amber-glow">-40°C</p>
+</div>
+</div>
+</div>
+</div>
+<main class="flex-1 flex overflow-hidden">
+<aside class="w-20 lg:w-64 bg-background-dark/80 border-r border-primary/20 flex flex-col justify-between py-6">
+<div class="flex flex-col gap-2 px-3">
+<a class="flex items-center gap-4 px-4 py-3 bg-primary/20 border-r-4 border-primary text-primary rounded-sm transition-all" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="hidden lg:block text-sm font-bold uppercase tracking-widest">City View</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-500 hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="hidden lg:block text-sm font-bold uppercase tracking-widest">Technology</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-500 hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="hidden lg:block text-sm font-bold uppercase tracking-widest">Economy</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-500 hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="hidden lg:block text-sm font-bold uppercase tracking-widest">Personnel</span>
+</a>
+<div class="my-4 border-t border-primary/10"></div>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-500 hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined text-red-400">warning</span>
+<span class="hidden lg:block text-sm font-bold uppercase tracking-widest text-red-400/80">Crisis Log</span>
+</a>
+</div>
+<div class="px-6 space-y-4">
+<div class="hidden lg:block p-4 bg-primary/5 border border-primary/20 rounded-lg">
+<p class="text-[10px] uppercase text-primary/60 font-black mb-2 tracking-tighter">Citizen Hope</p>
+<div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[65%] shadow-[0_0_8px_rgba(244,164,98,0.5)]"></div>
+</div>
+</div>
+<div class="hidden lg:block p-4 bg-red-950/20 border border-red-900/30 rounded-lg">
+<p class="text-[10px] uppercase text-red-500/60 font-black mb-2 tracking-tighter">Discontent</p>
+<div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+<div class="bg-red-600 h-full w-[28%]"></div>
+</div>
+</div>
+</div>
+</aside>
+<section class="flex-1 relative bg-slate-950 overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center brightness-[0.4]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w')"></div>
+<div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-background-dark via-transparent to-background-dark/40 opacity-80"></div>
+<div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,transparent_20%,rgba(0,0,0,0.6)_100%)]"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="absolute w-48 h-48 district-zone bg-amber-glow/5 border-2 border-amber-glow/40 hover:bg-amber-glow/20 cursor-pointer group flex items-center justify-center transition-all">
+<div class="absolute inset-0 bg-amber-glow/10 animate-pulse"></div>
+<div class="relative text-center px-4">
+<span class="material-symbols-outlined text-amber-glow text-4xl block group-hover:scale-110 transition-transform">bolt</span>
+<span class="text-[10px] font-black uppercase tracking-widest text-amber-glow mt-2 block">核心能量枢纽 (Core Energy Hub)</span>
+</div>
+</div>
+<div class="absolute top-[20%] left-[30%] w-56 h-32 district-zone bg-slate-500/5 border border-slate-500/40 hover:bg-slate-500/10 cursor-pointer group transition-all">
+<div class="absolute top-2 left-4 text-slate-400">
+<span class="material-symbols-outlined text-sm">factory</span>
+<span class="text-[9px] font-bold uppercase ml-2">工业资源区 (Industrial Resource Zone)</span>
+</div>
+</div>
+<div class="absolute bottom-[20%] right-[25%] w-64 h-40 district-zone bg-primary/5 border border-primary/30 hover:bg-primary/10 cursor-pointer group transition-all">
+<div class="absolute top-4 right-6 text-primary/70">
+<span class="material-symbols-outlined text-sm">home</span>
+<span class="text-[9px] font-bold uppercase ml-2">居民聚居地 (Residential Settlement)</span>
+</div>
+</div>
+</div>
+<div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end justify-between w-[90%] max-w-[1200px] gap-8">
+<div class="flex items-center gap-2 bg-background-dark/90 border border-primary/30 p-1 rounded-sm backdrop-blur-md shadow-2xl flex-1">
+<button class="flex-1 flex flex-col items-center justify-center py-3 border-b-2 border-primary bg-primary/10 text-primary transition-colors">
+<span class="material-symbols-outlined">precision_manufacturing</span>
+<span class="text-[10px] font-bold uppercase mt-1">Districts</span>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center py-3 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined">settings_accessibility</span>
+<span class="text-[10px] font-bold uppercase mt-1">Robotics</span>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center py-3 text-slate-500 hover:text-primary hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined">engineering</span>
+<span class="text-[10px] font-bold uppercase mt-1">Infrastructure</span>
+</button>
+</div>
+<div class="flex-1 max-w-[320px]">
+<div class="bg-background-dark/90 border border-primary/30 p-2 h-[74px] w-full backdrop-blur-md flex items-center gap-3">
+<div class="h-12 w-12 rounded border border-primary/40 p-0.5 overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover rounded-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwRgeTWQVVdMFnNCD6g_DG-XCqove2SCd0dwbELK8C990veMZd4f2osXDxyOAVWpIahzU_XHpKvLXcBEg-nhecKW2Ox1Mjta8CGx4gYKPxLgijQpHiBdxwiLQ2MHXmqQYwt6NUKTVXeFvrZSwUaIGTxHGLCqxYwvzE-ejy8Xth-uFhNySGEuil7SHO6bIXcgr26bu8zfGaa558rEkzz1ZYX0YxrbwqVpTleBR4ic0qjGyoZ2NqpNM9StQT3WuMTlANUlEfrqhQgQo"/>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-[10px] uppercase text-primary font-black tracking-tighter">Captain's Log</p>
+<h4 class="text-xs font-bold text-slate-100 whitespace-nowrap">城市管理者：莉莉丝</h4>
+<p class="text-[9px] text-slate-400 italic">(City Administrator: Lilith)</p>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute top-10 right-10 w-72 bg-black/60 border border-primary/20 p-4 backdrop-blur-md mechanical-border hidden xl:block">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-sm font-black uppercase tracking-tighter text-primary">District Overview</h3>
+<span class="text-[10px] text-slate-400 font-mono">ID: 00-412-X</span>
+</div>
+<div class="space-y-3">
+<div class="p-2 bg-primary/5 rounded border border-primary/10">
+<p class="text-[10px] text-slate-400 uppercase font-bold">Active Population</p>
+<p class="text-lg font-display text-slate-100">12,482 Souls</p>
+</div>
+<div class="p-2 bg-red-950/20 rounded border border-red-900/20">
+<p class="text-[10px] text-red-400 uppercase font-bold">Health Status</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-red-500 text-sm">medical_services</span>
+<span class="text-sm text-red-400">Critical Cold Exposure</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+<div class="relative w-full max-w-2xl bg-[#120d0a] border border-primary/30 rounded shadow-2xl overflow-hidden modal-inner-glow">
+<button class="absolute top-4 right-4 z-20 text-primary/60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div class="relative h-48 w-full overflow-hidden border-b border-primary/20">
+<img alt="District Illustration" class="w-full h-full object-cover brightness-[0.5] contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w"/>
+<div class="absolute inset-0 bg-gradient-to-t from-[#120d0a] via-transparent to-black/30"></div>
+<div class="absolute bottom-6 left-8">
+<h2 class="text-4xl font-serif text-primary uppercase tracking-tight">Core Energy Hub</h2>
+<p class="text-xs uppercase tracking-[0.2em] text-primary/50 mt-1 font-bold">Operational (Delivering 400MW consistently - 85 active shift laborers)</p>
+</div>
+</div>
+<div class="p-8 space-y-4">
+<div class="flex items-center gap-6 p-6 bg-primary/10 border-2 border-primary/40 rounded-sm hover:bg-primary/15 transition-all">
+<div class="w-20 h-20 bg-black/40 border border-primary/30 rounded flex-shrink-0 overflow-hidden">
+<img alt="Task thumbnail" class="w-full h-full object-cover grayscale opacity-60" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w"/>
+</div>
+<div class="flex-1">
+<p class="text-[10px] uppercase font-bold text-primary tracking-widest mb-1">Critical Priority</p>
+<p class="text-sm font-bold text-slate-100">Work location: Reactor Core Basement</p>
+<p class="text-xs text-slate-400">Task: Stabilize pressure valves amidst freezing steam bursts (Prevents 10% Heat Loss).</p>
+</div>
+<button class="px-8 py-3 bg-primary text-background-dark font-black text-xs uppercase tracking-widest border-2 border-primary hover:bg-transparent hover:text-primary transition-all">
+                        DEPLOY
+                    </button>
+</div>
+<div class="flex items-center gap-4 p-4 bg-black/40 border border-primary/20 rounded-sm hover:border-primary/40 transition-all">
+<div class="w-14 h-14 bg-black/60 border border-primary/20 rounded flex-shrink-0 overflow-hidden">
+<img alt="Task thumbnail" class="w-full h-full object-cover grayscale opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w"/>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-slate-200">Work location: Maintenance Catwalk</p>
+<p class="text-[11px] text-slate-500">Task: Scrape ice accumulation from external sensors (+15% Efficiency).</p>
+</div>
+<button class="px-6 py-2 border border-primary/60 text-primary font-bold text-[10px] uppercase tracking-wider hover:bg-primary/20 transition-all">
+                        GO TO WORK
+                    </button>
+</div>
+<div class="flex items-center gap-4 p-4 bg-black/40 border border-primary/20 rounded-sm hover:border-primary/40 transition-all">
+<div class="w-14 h-14 bg-black/60 border border-primary/20 rounded flex-shrink-0 overflow-hidden">
+<img alt="Task thumbnail" class="w-full h-full object-cover grayscale opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w"/>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-slate-200">Work location: Fuel Silo A-12</p>
+<p class="text-[11px] text-slate-500">Task: Manual sorting of coal debris for optimal combustion (+50 Coal/10min).</p>
+</div>
+<button class="px-6 py-2 border border-primary/60 text-primary font-bold text-[10px] uppercase tracking-wider hover:bg-primary/20 transition-all">
+                        GO TO WORK
+                    </button>
+</div>
+</div>
+</div>
+</div>
+<footer class="h-1 bg-primary/40 shadow-[0_0_10px_rgba(244,164,98,0.5)]"></footer>
+</div>
+
+</body></html>

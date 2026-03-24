@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f4a462",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#120d0a",
+                        "panel-dark": "#1a1410",
+                    },
+                    fontFamily: {
+                        "display": ["Newsreader", "serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            * {
+                @apply tracking-wider;
+                text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.8), 0 0 2px rgba(244, 164, 98, 0.1);
+            }
+        }
+        .textured-panel {
+            background-color: #1a1410;
+            background-image: 
+                radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0),
+                linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.2) 1px, transparent 1px);
+            background-size: 40px 40px, 4px 4px, 4px 4px;
+            position: relative;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
+        }
+        .carbon-texture {
+            background: linear-gradient(27deg, #151515 5px, transparent 5px) 0 5px,
+                        linear-gradient(207deg, #151515 5px, transparent 5px) 10px 0px,
+                        linear-gradient(27deg, #222 5px, transparent 5px) 0px 10px,
+                        linear-gradient(207deg, #222 5px, transparent 5px) 10px 5px,
+                        linear-gradient(90deg, #1b1b1b 10px, transparent 10px),
+                        linear-gradient(#1d1d1d 25%, #1a1a1a 25%, #1a1a1a 50%, transparent 50%, transparent 75%, #242424 75%, #242424);
+            background-color: #131313;
+            background-size: 20px 20px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .etched-border {
+            border: 0.5px solid rgba(244, 164, 98, 0.25);
+            box-shadow: 0 0 8px rgba(244, 164, 98, 0.05), inset 0 0 4px rgba(244, 164, 98, 0.05);
+        }
+        .etched-border-active {
+            border: 1px solid rgba(244, 164, 98, 0.5);
+            box-shadow: 0 0 12px rgba(244, 164, 98, 0.15), inset 0 0 8px rgba(244, 164, 98, 0.1);
+        }
+        .corner-fastener {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #2a1f18;
+            border: 1px solid #3d2b1d;
+            border-radius: 50%;
+            z-index: 10;
+        }
+        .vignette-overlay {
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+        .timer-glow {
+            text-shadow: 0 0 30px rgba(244, 164, 98, 0.3), 0 0 60px rgba(244, 164, 98, 0.1);
+        }
+        .amber-glow-text {
+            color: #f4a462;
+            text-shadow: 0 0 8px rgba(244, 164, 98, 0.6);
+        }
+        .stamped-divider {
+            width: 1px;
+            height: 24px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 164, 98, 0.2), transparent);
+            border-left: 1px solid rgba(0,0,0,0.5);
+        }
+        .pressed-tab {
+            background: rgba(0,0,0,0.3);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.05);
+            border: 1px solid rgba(244, 164, 98, 0.2);
+        }
+        input[type='range'] {
+            -webkit-appearance: none;
+            background: #2a1f18;
+            height: 2px;
+            border-radius: 1px;
+        }
+        input[type='range']::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 10px;
+            width: 10px;
+            border-radius: 1px;
+            background: #f4a462;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(244, 164, 98, 0.8);
+            border: 1px solid rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-display text-slate-100 min-h-screen overflow-hidden">
+<div class="relative h-screen w-full flex flex-col overflow-hidden">
+<div class="fixed inset-0 z-0">
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent z-10"></div>
+<img alt="Coal workers in snow near furnace" class="w-full h-full object-cover grayscale-[0.2] contrast-[1.1]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp_o98ut-RPMAIQXKRSfdH7l98-uHemKQHFyZI8BRqWMN196ZvPYC4JxscN7ESJO19-cC6i0sIMHPFBikoMQQvbcaL9VNIj5Zc3Z-ncYcXgBUhnYyJP1zXOL60nuMd8qC2HFpm7vhTvYKV19YIbbY_58QCHGK0c49raa7RobBlMhN-A2tRCCx-TN6DaYhtNYk_Xu0G9OewQfYsFbSVzyL_lu8-Cc0XAalcofXioRE2iNbf3zvFucA01x8RUD0tZ_IgUj7V0L1LfIM"/>
+</div>
+<header class="relative z-20 etched-border textured-panel shrink-0">
+<div class="absolute inset-0 carbon-texture"></div>
+<div class="flex items-center justify-between px-8 py-3 relative z-10">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="text-primary/80">
+<span class="material-symbols-outlined text-2xl">ac_unit</span>
+</div>
+<h2 class="text-lg font-bold tracking-[0.2em] uppercase amber-glow-text">Expedition Focus</h2>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest opacity-60 mr-4">
+<span class="flex items-center gap-2"><span class="material-symbols-outlined text-xs">thermostat</span> -42°C</span>
+</div>
+<button class="p-1.5 opacity-60 hover:opacity-100 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl">settings</span>
+</button>
+<button class="p-1.5 opacity-60 hover:opacity-100 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl">history</span>
+</button>
+<div class="stamped-divider"></div>
+<div class="w-8 h-8 etched-border overflow-hidden grayscale hover:grayscale-0 transition-all cursor-pointer">
+<img alt="User profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-rLY5mjhbPfJdG9SdztxJLQI_hmbJ9wEjDYNbI41m6G2BYjM7LHdzHDxf7Wj-xhdHMSLh9dexgCEbQWWwCYpefaf5e9e4tzWxKvK73fe3MYly9wHXrrudnsenprSSsh1otXcMw4FMZKKlAki9XERD3kQbVHJMXwImAH5skqmb0VLzPGSPgqAL8NrDoUl3uMC9X5rQZUwSxlLjq8pOCyqHNPDIHJA3s1L55YSrmPLaySDEd666k20sRwMST-mI1HCk8fr3yCjVFLc"/>
+</div>
+</div>
+</div>
+<div class="relative z-10 border-t border-primary/10 flex items-stretch text-[10px] uppercase font-bold tracking-[0.25em]">
+<div class="absolute inset-0 bg-primary/[0.03] backdrop-blur-[1px]"></div>
+<div class="flex-1 flex items-center gap-4 px-8 py-2 border-r border-primary/10 relative">
+<span class="text-primary/40 text-[9px] font-black">Region:</span>
+<span class="amber-glow-text opacity-90 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm opacity-60">filter_vintage</span> Sector 7-G
+                </span>
+</div>
+<div class="flex-[2] flex items-center gap-4 px-8 py-2 relative">
+<span class="text-primary/40 text-[9px] font-black">Current Objective:</span>
+<span class="amber-glow-text opacity-90 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm opacity-60">task_alt</span> Audit coal reserves in Sector B
+                </span>
+</div>
+<div class="px-6 flex items-center border-l border-primary/10 relative">
+<span class="text-[8px] text-primary/40 animate-pulse">System Active</span>
+</div>
+</div>
+<div class="corner-fastener top-1 left-1"></div>
+<div class="corner-fastener top-1 right-1"></div>
+<div class="corner-fastener bottom-1 left-1"></div>
+<div class="corner-fastener bottom-1 right-1"></div>
+</header>
+<main class="relative z-20 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
+<section class="lg:col-span-4 flex flex-col p-10 space-y-10 overflow-y-auto relative bg-background-dark/40 backdrop-blur-sm">
+<div class="absolute inset-0 vignette-overlay"></div>
+<div class="space-y-6 relative z-10">
+<div class="flex items-center justify-between border-b border-primary/10 pb-3">
+<h3 class="text-xl font-bold tracking-widest italic uppercase opacity-90">Shift Objectives</h3>
+<span class="text-[9px] uppercase tracking-[0.3em] text-primary/70 font-black">Priority Alpha</span>
+</div>
+<ul class="space-y-5">
+<li class="flex items-center gap-4 group cursor-pointer opacity-40">
+<div class="w-5 h-5 etched-border flex items-center justify-center bg-black/20">
+<span class="material-symbols-outlined text-primary text-xs">check</span>
+</div>
+<span class="text-md line-through decoration-primary/30">Recalibrate pressure valves</span>
+</li>
+<li class="flex items-center gap-4 group cursor-pointer">
+<div class="w-5 h-5 etched-border-active flex items-center justify-center bg-primary/5">
+<span class="material-symbols-outlined text-primary text-xs opacity-0">check</span>
+</div>
+<span class="text-md opacity-90 group-hover:text-primary transition-colors">Audit coal reserves in Sector B</span>
+</li>
+<li class="flex items-center gap-4 group cursor-pointer opacity-70">
+<div class="w-5 h-5 etched-border flex items-center justify-center bg-black/20"></div>
+<span class="text-md group-hover:opacity-100">Inspect furnace lining for thermal leaks</span>
+</li>
+</ul>
+<button class="flex items-center gap-2 text-primary/50 hover:text-primary transition-all text-[10px] uppercase font-black tracking-[0.2em]">
+<span class="material-symbols-outlined text-sm">add</span> New Objective
+                </button>
+</div>
+<div class="space-y-4 p-6 etched-border textured-panel relative">
+<div class="absolute inset-0 carbon-texture"></div>
+<div class="flex items-center gap-2 text-primary/80 relative z-10">
+<span class="material-symbols-outlined text-lg">edit_note</span>
+<h3 class="text-sm font-bold uppercase tracking-widest">Expedition Notes</h3>
+</div>
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-slate-300 placeholder:text-slate-700 italic text-sm resize-none relative z-10" placeholder="Log observations of the frost creep..." rows="5"></textarea>
+<div class="pt-3 border-t border-primary/5 flex justify-between items-center text-[9px] uppercase tracking-[0.2em] opacity-30 font-bold relative z-10">
+<span>Logged: 14:22 GMT</span>
+<span>Encrypted</span>
+</div>
+<div class="corner-fastener top-1 left-1 opacity-50"></div>
+<div class="corner-fastener bottom-1 right-1 opacity-50"></div>
+</div>
+</section>
+<section class="lg:col-span-8 textured-panel etched-border border-l-0 flex flex-col items-center justify-center p-12 text-center overflow-y-auto relative">
+<div class="absolute inset-0 carbon-texture"></div>
+<div class="absolute inset-0 vignette-overlay"></div>
+<div class="relative w-full max-w-md aspect-square flex flex-col items-center justify-center border-[12px] border-background-dark rounded-full shadow-2xl bg-[#0d0907] etched-border-active relative z-10">
+<div class="absolute inset-0 rounded-full bg-gradient-to-br from-primary/5 to-transparent"></div>
+<div class="z-10 flex flex-col items-center">
+<span class="text-primary/40 uppercase tracking-[0.4em] font-black text-[10px] mb-4">Deep Focus Cycle</span>
+<div class="text-8xl font-black text-primary timer-glow font-mono tracking-tighter leading-none mb-2">
+                        24:59
+                    </div>
+<div class="flex gap-10 mt-10">
+<button class="w-14 h-14 rounded-full bg-primary/90 text-background-dark flex items-center justify-center hover:bg-primary transition-all hover:scale-105 shadow-[0_0_20px_rgba(244,164,98,0.3)]">
+<span class="material-symbols-outlined font-black text-3xl">play_arrow</span>
+</button>
+<button class="w-14 h-14 rounded-full etched-border text-primary/80 flex items-center justify-center hover:bg-primary/5 hover:text-primary transition-all">
+<span class="material-symbols-outlined font-bold text-2xl">refresh</span>
+</button>
+</div>
+</div>
+<div class="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
+<div class="px-3 py-1 bg-black/60 etched-border text-[9px] font-black uppercase tracking-[0.2em] text-primary/60">Shift 1/4</div>
+<div class="px-3 py-1 bg-black/60 etched-border text-[9px] font-black uppercase tracking-[0.2em] text-primary/60">Core: Nominal</div>
+</div>
+</div>
+<div class="mt-16 w-full max-w-sm grid grid-cols-3 gap-3 relative z-10">
+<button class="flex flex-col items-center gap-2 p-3 pressed-tab transition-all">
+<span class="material-symbols-outlined text-primary text-xl">local_fire_department</span>
+<span class="text-[9px] uppercase font-black tracking-widest text-primary">Focus</span>
+</button>
+<button class="flex flex-col items-center gap-2 p-3 etched-border opacity-40 hover:opacity-100 hover:bg-primary/5 transition-all">
+<span class="material-symbols-outlined text-xl">ac_unit</span>
+<span class="text-[9px] uppercase font-black tracking-widest">Chill</span>
+</button>
+<button class="flex flex-col items-center gap-2 p-3 etched-border opacity-40 hover:opacity-100 hover:bg-primary/5 transition-all">
+<span class="material-symbols-outlined text-xl">severe_cold</span>
+<span class="text-[9px] uppercase font-black tracking-widest">Rest</span>
+</button>
+</div>
+<div class="mt-10 flex items-center gap-6 opacity-20 relative z-10">
+<div class="h-[1px] w-16 bg-primary"></div>
+<span class="text-[10px] italic uppercase tracking-[0.3em]">Unit 0924 Monitoring</span>
+<div class="h-[1px] w-16 bg-primary"></div>
+</div>
+<div class="corner-fastener top-3 left-3"></div>
+<div class="corner-fastener top-3 right-3"></div>
+<div class="corner-fastener bottom-3 left-3"></div>
+<div class="corner-fastener bottom-3 right-3"></div>
+</section>
+</main>
+<nav class="relative z-30 flex items-center justify-center gap-0 etched-border border-x-0 bg-background-dark/80 backdrop-blur-md">
+<a class="flex items-center gap-2 text-primary px-8 py-2.5 pressed-tab border-y-0" href="#">
+<span class="material-symbols-outlined text-lg">timer</span>
+<span class="text-[10px] uppercase font-black tracking-[0.2em]">Chrono</span>
+</a>
+<a class="flex items-center gap-2 text-slate-500 hover:text-primary transition-all px-8 py-2.5 border-r border-primary/10" href="#">
+<span class="material-symbols-outlined text-lg">map</span>
+<span class="text-[10px] uppercase font-black tracking-[0.2em]">Grid</span>
+</a>
+<a class="flex items-center gap-2 text-slate-500 hover:text-primary transition-all px-8 py-2.5 border-r border-primary/10" href="#">
+<span class="material-symbols-outlined text-lg">inventory_2</span>
+<span class="text-[10px] uppercase font-black tracking-[0.2em]">Cargo</span>
+</a>
+<a class="flex items-center gap-2 text-slate-500 hover:text-primary transition-all px-8 py-2.5" href="#">
+<span class="material-symbols-outlined text-lg">radio</span>
+<span class="text-[10px] uppercase font-black tracking-[0.2em]">Signal</span>
+</a>
+</nav>
+<footer class="relative z-30 shrink-0 etched-border border-x-0 border-t-0 textured-panel px-8 py-4">
+<div class="absolute inset-0 carbon-texture opacity-20"></div>
+<div class="relative z-10 flex items-center justify-between gap-12">
+<div class="flex items-center gap-6 flex-1 min-w-0">
+<div class="bg-black/40 etched-border px-4 py-2 rounded-sm flex items-center gap-4 min-w-[280px]">
+<div class="w-8 h-8 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary amber-glow-text animate-pulse">graphic_eq</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="text-[8px] uppercase font-black text-primary/40 tracking-[0.2em]">Soundscape Link 04</span>
+<span class="text-xs font-mono amber-glow-text uppercase tracking-widest truncate">Sub_Zero_Winds_v2.flac</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-[8px] uppercase font-black text-primary/40 tracking-[0.2em]">Duration</span>
+<span class="text-lg font-mono amber-glow-text leading-tight">04:12:09</span>
+</div>
+</div>
+<div class="flex items-center gap-6 bg-black/30 p-1.5 px-4 etched-border rounded-full">
+<button class="text-primary/60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-2xl">skip_previous</span>
+</button>
+<button class="w-12 h-12 rounded-full bg-primary/90 text-background-dark flex items-center justify-center hover:bg-primary transition-all shadow-[0_0_15px_rgba(244,164,98,0.4)]">
+<span class="material-symbols-outlined font-black text-3xl">play_arrow</span>
+</button>
+<button class="text-primary/60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-2xl">skip_next</span>
+</button>
+</div>
+<div class="flex items-center justify-end gap-8 flex-1">
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/40 text-sm">volume_down</span>
+<input class="w-24 accent-primary opacity-80" max="100" min="0" type="range" value="65"/>
+<span class="material-symbols-outlined text-primary/40 text-sm">volume_up</span>
+</div>
+<div class="flex gap-1">
+<div class="w-1 h-2.5 bg-primary/80"></div>
+<div class="w-1 h-2.5 bg-primary/80"></div>
+<div class="w-1 h-2.5 bg-primary/80"></div>
+<div class="w-1 h-2.5 bg-primary/30"></div>
+<div class="w-1 h-2.5 bg-primary/10"></div>
+</div>
+</div>
+<button class="p-2 etched-border hover:bg-primary/5 group transition-all">
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary text-xl">equalizer</span>
+</button>
+</div>
+</div>
+<div class="corner-fastener top-1.5 left-1.5"></div>
+<div class="corner-fastener top-1.5 right-1.5"></div>
+<div class="corner-fastener bottom-1.5 left-1.5"></div>
+<div class="corner-fastener bottom-1.5 right-1.5"></div>
+</footer>
+</div>
+
+</body></html>
