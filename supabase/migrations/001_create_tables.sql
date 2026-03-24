@@ -16,8 +16,8 @@ create table public.users (
   auto_assign boolean not null default true,
   hunger_status text not null default 'healthy'
     check (hunger_status in ('healthy', 'hungry')),
-  last_seen_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  last_seen_at timestamptz not null default timezone('utc', now()),
+  created_at timestamptz not null default timezone('utc', now())
 );
 
 create table public.city_resources (
@@ -28,7 +28,7 @@ create table public.city_resources (
   steel integer not null check (steel >= 0),
   raw_food integer not null check (raw_food >= 0),
   food_supply integer not null check (food_supply >= 0),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default timezone('utc', now())
 );
 
 create table public.task_templates (
@@ -74,7 +74,7 @@ create table public.task_instances (
     check (remaining_minutes >= 0),
   slot_id text,
   locked_by_user_id uuid references public.users(id) on delete set null,
-  created_at timestamptz not null default now(),
+  created_at timestamptz not null default timezone('utc', now()),
   completed_at timestamptz
 );
 
@@ -82,7 +82,7 @@ create table public.task_participants (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
   instance_id uuid not null references public.task_instances(id) on delete cascade,
-  joined_at timestamptz not null default now(),
+  joined_at timestamptz not null default timezone('utc', now()),
   unique (user_id, instance_id)
 );
 
@@ -91,7 +91,7 @@ create table public.sessions (
   user_id uuid not null references public.users(id) on delete cascade,
   task_template_id uuid not null references public.task_templates(id) on delete restrict,
   task_instance_id uuid references public.task_instances(id) on delete set null,
-  created_at timestamptz not null default now(),
+  created_at timestamptz not null default timezone('utc', now()),
   started_at timestamptz,
   last_heartbeat_at timestamptz,
   ended_at timestamptz,
@@ -129,7 +129,7 @@ create table public.city_logs (
   id bigint generated always as identity primary key,
   user_label text not null,
   action_desc text not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default timezone('utc', now())
 );
 
 create unique index task_instances_active_slot_key
