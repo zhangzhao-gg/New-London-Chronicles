@@ -42,8 +42,6 @@ type DistrictVisual = {
   surfaceClassName: string;
   accentClassName: string;
   tooltipSide: TooltipSide;
-  summary: (district: CityDistrict) => string;
-  detail: (district: CityDistrict) => string;
 };
 
 const resourceRailLabels: Record<ResourceKind, string> = {
@@ -66,8 +64,6 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     surfaceClassName: "border-slate-500/45 bg-slate-500/8 text-slate-200 hover:bg-slate-500/12",
     accentClassName: "text-slate-400/85",
     tooltipSide: "bottom",
-    summary: (district) => `Workers ${district.workingCount}`,
-    detail: () => "Efficiency 88%",
   },
   residential: {
     badge: "居民聚居地",
@@ -79,8 +75,6 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
       "border-[rgba(244,164,98,0.34)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.14)]",
     accentClassName: "text-[rgba(255,193,137,0.82)]",
     tooltipSide: "top",
-    summary: (district) => `Pop ${district.workingCount * 120 + 4201}`,
-    detail: () => "Shelter stable",
   },
   medical: {
     badge: "紧急医疗站",
@@ -91,8 +85,6 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     surfaceClassName: "border-blue-400/40 bg-blue-500/8 text-blue-200 hover:bg-blue-500/14",
     accentClassName: "text-blue-300/76",
     tooltipSide: "left",
-    summary: (district) => `Medics ${district.workingCount}`,
-    detail: () => "Emergency beds ready",
   },
   food: {
     badge: "食物区",
@@ -103,8 +95,6 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     surfaceClassName: "border-green-800/35 bg-green-800/8 text-green-200 hover:bg-green-800/14",
     accentClassName: "text-green-400/76",
     tooltipSide: "top",
-    summary: (district) => `Crops ${district.workingCount}`,
-    detail: () => "Heat lamps online",
   },
   exploration: {
     badge: "哨站",
@@ -115,8 +105,6 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     surfaceClassName: "border-slate-700/45 bg-slate-700/8 text-slate-300 hover:bg-slate-700/14",
     accentClassName: "text-slate-400/80",
     tooltipSide: "bottom",
-    summary: (district) => `Scouts ${district.workingCount}`,
-    detail: () => "Visibility 71%",
   },
 };
 
@@ -127,13 +115,6 @@ const navItems = [
   { label: "Alerts", icon: "⚠", active: false },
 ] as const;
 
-const fallbackDistricts: CityDistrict[] = [
-  { district: "resource", label: "资源区", status: "无进行中任务", workingCount: 0 },
-  { district: "residential", label: "居住区", status: "无进行中任务", workingCount: 0 },
-  { district: "medical", label: "医疗区", status: "无进行中任务", workingCount: 0 },
-  { district: "food", label: "食物区", status: "无进行中任务", workingCount: 0 },
-  { district: "exploration", label: "探索区", status: "无进行中任务", workingCount: 0 },
-];
 
 function joinClasses(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -193,7 +174,7 @@ function DistrictZone({
 }) {
   const visual = districtVisuals[district.district];
   const zoneLabel = `${visual.badge} (${visual.englishLabel})`;
-  const zoneFooter = district.district === "resource" ? visual.detail(district) : visual.summary(district);
+  const zoneFooter = district.workingCount > 0 ? `Workers ${formatNumber(district.workingCount)}` : "No active crews";
 
   return (
     <Tooltip
@@ -301,8 +282,9 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
   const [activeDistrictKey, setActiveDistrictKey] = useState<DistrictKey | null>(null);
 
   const resources = useMemo(() => resourceRows(city), [city]);
-  const districts = city?.districts?.length ? city.districts : fallbackDistricts;
+  const districts = city?.districts ?? [];
   const languageOptions = city?.languageOptions ?? ["zh-CN", "en-US"];
+  const districtTelemetryMessage = city ? "District telemetry unavailable" : "Synchronizing city telemetry";
 
   useEffect(() => {
     if (!districts.length) {
@@ -320,9 +302,6 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
     [activeDistrictKey, districts],
   );
   const activeDistrictVisual = activeDistrict ? districtVisuals[activeDistrict.district] : null;
-
-  const hopePercentage = Math.max(18, Math.min(92, 42 + (city?.onlineCount ?? 0) * 8));
-  const discontentPercentage = user.hungerStatus === "hungry" ? 46 : 22;
   const activeBuildingCount = city?.buildings.length ?? 0;
 
   return (
@@ -448,16 +427,14 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
             <div className="space-y-4 px-1 lg:px-0">
               <div className="rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.05)] p-4">
                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Citizen Hope</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full bg-[var(--nlc-orange)] shadow-[0_0_8px_rgba(244,164,98,0.45)]" style={{ width: `${hopePercentage}%` }} />
-                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800" />
+                <p className="mb-0 mt-2 text-[10px] text-[var(--nlc-muted)]">Telemetry unavailable</p>
               </div>
 
               <div className="rounded-sm border border-red-900/30 bg-red-950/20 p-4">
                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-400/70">Discontent</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full bg-red-600" style={{ width: `${discontentPercentage}%` }} />
-                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800" />
+                <p className="mb-0 mt-2 text-[10px] text-red-200/70">Telemetry unavailable</p>
               </div>
 
               <div>
@@ -512,6 +489,7 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
           <div className="absolute left-6 right-6 top-24 z-10 space-y-2">
             {isLoading ? <StatusNotice>Synchronizing city telemetry...</StatusNotice> : null}
             {isRefreshing ? <StatusNotice>Polling `/api/city` for fresh district state.</StatusNotice> : null}
+            {!isLoading && !districts.length ? <StatusNotice>{districtTelemetryMessage}</StatusNotice> : null}
             {errorMessage ? <StatusNotice tone="error">{errorMessage}</StatusNotice> : null}
             {actionMessage ? <StatusNotice tone="warn">{actionMessage}</StatusNotice> : null}
           </div>
@@ -643,6 +621,7 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
                   </div>
 
                   <button
+                    aria-label="Auto assign"
                     aria-checked={user.autoAssign}
                     className={joinClasses(
                       "relative inline-flex h-8 w-16 items-center rounded-full border transition",

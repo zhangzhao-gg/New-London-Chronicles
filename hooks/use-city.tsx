@@ -85,7 +85,7 @@ function getApiErrorMessage(payload: { error?: { message?: string } } | null, fa
   return message && message.length > 0 ? message : fallback;
 }
 
-async function fetchCitySnapshot() {
+async function fetchCitySnapshot(): Promise<CitySnapshot> {
   const response = await fetch("/api/city", {
     method: "GET",
     cache: "no-store",
@@ -96,11 +96,16 @@ async function fetchCitySnapshot() {
 
   const payload = await readJson<CitySnapshot & { error?: { message?: string } }>(response);
 
-  if (!response.ok) {
+  if (
+    !response.ok ||
+    !payload ||
+    !Array.isArray(payload.languageOptions) ||
+    !Array.isArray(payload.districts)
+  ) {
     throw new Error(getApiErrorMessage(payload, "Failed to load city snapshot."));
   }
 
-  return payload as CitySnapshot;
+  return payload;
 }
 
 async function persistAutoAssign(autoAssign: boolean) {
