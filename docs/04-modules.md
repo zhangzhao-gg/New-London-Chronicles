@@ -119,6 +119,7 @@
 - 输入：`POST /api/auth/login`
 - 输出：登录页与用户名表单
 - 规则：
+  - 实现前必须对照 `UI/start.html`
   - 全屏暗色背景、居中输入框、主按钮使用 `#f4a462`
   - 登录成功后 `router.push("/city")`
   - 用户名为空、过长或包含非法字符时前端即时提示
@@ -130,6 +131,7 @@
 - 输入：`GET /api/city`、`POST /api/tasks/assign-next`
 - 输出：地图页、HUD、区块 hover tooltip
 - 规则：
+  - 实现前必须对照 `UI/city.html`
   - 30 秒轮询 `/api/city`
   - 顶部导航固定展示 `LOGISTICS` 选中，`COUNCIL` 与 `ARCHIVES` 作为未来占位
   - 顶部资源栏必须显示 `coal / wood / steel / rawFood / foodSupply / temperature`
@@ -149,6 +151,7 @@
 - 输入：`GET /api/tasks`
 - 输出：区块任务列表
 - 规则：
+  - 实现前必须对照 `UI/city-任务.html`
   - 每行显示任务名、产出或效果、当前参与人数、操作按钮
   - `disabledReason` 为 `insufficient_resource` 时显示缺少资源说明
   - 点击按钮后调用 `POST /api/tasks/join`
@@ -161,6 +164,7 @@
 - 输入：`sessionId`、`GET /api/session/current`、`POST /api/session/start`、`POST /api/session/heartbeat`、`POST /api/session/end`、`POST /api/tasks/assign-next`
 - 输出：倒计时、任务结算页
 - 规则：
+  - `app/focus/page.tsx` 实现前必须对照 `UI/focus.html`
   - 进入 `/focus?sessionId=...` 时先查 `GET /api/session/current?sessionId=...`，加载本次待进行或进行中的 session
   - 未带 `sessionId` 进入 `/focus` 时，再查 `GET /api/session/current`，恢复可继续的 `build/work` session
   - 用户输入自选时长后才调用 `/api/session/start`
@@ -181,6 +185,7 @@
 - 输入：本地音频文件与 Focus 页状态
 - 输出：环境音与底部播放器
 - 规则：
+  - 播放器布局与氛围需对照 `UI/focus.html` 底部播放器区域
   - 三路环境音固定命名：`focus` / `chill` / `rest`
   - 切换时 `300ms` 淡入淡出
   - 音频状态仅存在客户端，不写服务器
