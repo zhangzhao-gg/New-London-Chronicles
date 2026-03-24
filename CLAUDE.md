@@ -9,11 +9,11 @@ Next.js 15.2.4 + React 19.0.0 + Tailwind CSS 4.1.1 + Supabase JS 2.49.4 + ts-nod
 ## 根目录地图
 
 <directory>
-app/ - Next.js 页面与 Route Handlers，承载 UI 入口和 HTTP 边界 (planned)
+app/ - Next.js 页面与 Route Handlers，当前已落地全局样式与根布局
 </directory>
 
 <directory>
-components/ - 纯 UI 组件与页面块，不直接访问数据库 (planned)
+components/ - 纯 UI 组件与页面块，当前已落地 M06 共享组件
 </directory>
 
 <directory>
@@ -52,6 +52,14 @@ UI/ - 静态原型，提供视觉与布局参考，不是运行时代码
 
 <config>
 PRD.md - 产品规则与玩法边界，温度常量与任务系统以此为准
+</config>
+
+<config>
+package.json - Next.js / React / Tailwind / TypeScript 依赖与脚本入口
+</config>
+
+<config>
+tsconfig.json - TypeScript 严格模式与路径解析配置
 </config>
 
 <config>
