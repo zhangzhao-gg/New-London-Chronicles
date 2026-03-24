@@ -35,6 +35,7 @@ type UserRow = {
   username: string;
 };
 
+const CUSTOM_AUTH_COOKIE_NAME = "nlc-sb-anon-session";
 const AUTH_COOKIE_NAME_PATTERN = /(auth-token|^sb-)/;
 const CHUNK_SUFFIX_PATTERN = /\.\d+$/;
 const TWELVE_HOURS_IN_MS = 12 * 60 * 60 * 1000;
@@ -183,6 +184,15 @@ function extractAccessToken(sessionValue: string): string | null {
       return parsed.access_token;
     }
 
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "accessToken" in parsed &&
+      typeof parsed.accessToken === "string"
+    ) {
+      return parsed.accessToken;
+    }
+
     return null;
   } catch {
     return null;
@@ -194,7 +204,7 @@ async function getAccessTokenCandidates(): Promise<string[]> {
   const allCookies = cookieStore.getAll();
   const candidateBaseNames = [...new Set(
     allCookies
-      .filter(({ name }) => AUTH_COOKIE_NAME_PATTERN.test(name))
+      .filter(({ name }) => name === CUSTOM_AUTH_COOKIE_NAME || AUTH_COOKIE_NAME_PATTERN.test(name))
       .map(({ name }) => name.replace(CHUNK_SUFFIX_PATTERN, "")),
   )];
 
@@ -423,4 +433,3 @@ export function mapLogDto(log: CityLogRow) {
     createdAt: log.created_at,
   };
 }
-

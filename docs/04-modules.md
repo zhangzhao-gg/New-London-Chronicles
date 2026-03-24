@@ -129,7 +129,7 @@
 
 ## M08 — 城市地图页 + HUD
 
-- 交付物：`app/city/page.tsx`、`hooks/use-city.ts`
+- 交付物：`app/city/page.tsx`、`hooks/use-city.tsx`
 - 输入：`GET /api/city`、`POST /api/tasks/assign-next`
 - 输出：地图页、HUD、区块 hover tooltip
 - 规则：
