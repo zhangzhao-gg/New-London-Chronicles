@@ -540,7 +540,19 @@ export class AudioManager {
     }
   }
 
-  private onAmbientError = () => {
+  private onAmbientError = (event: Event) => {
+    const target = event.currentTarget;
+
+    if (!(target instanceof HTMLAudioElement)) {
+      return;
+    }
+
+    const activeAmbientId = this.activeAmbientPlaybackId;
+
+    if (!activeAmbientId || this.ambientElements[activeAmbientId] !== target) {
+      return;
+    }
+
     this.activeAmbientPlaybackId = null;
     this.updateSnapshot({ isAmbientReady: false, lastError: formatUnavailableMessage("ambient") });
   };
