@@ -62,6 +62,7 @@
 │  └─ page.tsx
 ├─ components/
 │  ├─ city/
+│  │  └─ CityPageShell.tsx
 │  ├─ focus/
 │  ├─ hud/
 │  └─ ui/

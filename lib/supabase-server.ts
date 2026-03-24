@@ -204,8 +204,8 @@ async function getAccessTokenCandidates(): Promise<string[]> {
   const allCookies = cookieStore.getAll();
   const candidateBaseNames = [...new Set(
     allCookies
-      .filter(({ name }) => name === CUSTOM_AUTH_COOKIE_NAME || AUTH_COOKIE_NAME_PATTERN.test(name))
-      .map(({ name }) => name.replace(CHUNK_SUFFIX_PATTERN, "")),
+      .map(({ name }) => name.replace(CHUNK_SUFFIX_PATTERN, ""))
+      .filter((baseName) => baseName === CUSTOM_AUTH_COOKIE_NAME || AUTH_COOKIE_NAME_PATTERN.test(baseName)),
   )];
 
   const accessTokens: string[] = [];
