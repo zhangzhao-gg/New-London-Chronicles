@@ -80,7 +80,8 @@ export default function HomePage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const nextFieldError = validateUsername(username);
+    const requestUsername = username.trim();
+    const nextFieldError = validateUsername(requestUsername);
 
     if (nextFieldError) {
       setFieldError(nextFieldError);
@@ -97,7 +98,7 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username: trimmedUsername }),
+        body: JSON.stringify({ username: requestUsername }),
       });
 
       if (response.ok) {
@@ -208,6 +209,7 @@ export default function HomePage() {
                     autoComplete="username"
                     autoFocus
                     className="nlc-focus-ring w-full border-x-0 border-b-2 border-t-0 border-[rgba(120,130,148,0.55)] bg-[rgba(18,12,9,0.78)] px-4 py-4 text-xl text-white transition-colors placeholder:text-[rgba(148,163,184,0.45)] focus:border-[var(--nlc-orange)] focus:outline-none"
+                    disabled={isSubmitting}
                     id="username"
                     name="username"
                     onChange={handleUsernameChange}
