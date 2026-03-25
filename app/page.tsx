@@ -11,6 +11,7 @@ import { type ChangeEvent, type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Button from "@/components/ui/Button";
+import { navigateTo } from "@/lib/client-navigation";
 
 const LOGIN_BACKGROUND_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuBSQtA82Kjcz8PRk5t69IU84R9Ckn-cu8oAhtO-SmEZ5FCIeW3m1NFfZGuhVd6_lbeY9tUJLJ_TkbvMXTVXZFJ3dSMvykokD51GrWSCY8_7wELgPCMSB7Rl-T-D0NKrb1odWewCn4wDRrl8MUZBJ-H9f0rUXayAWyN9AsP3x9BA-A2cOfDZPxOyo1AqDmi0fyLIl-B0kUksc1dfCvUNnuqAbDvh816yoR8dFZs7Mb6wKdH7hElKAgQhXCizSx6FLZmGfYaukX4TesA";
@@ -102,7 +103,7 @@ export default function HomePage() {
       });
 
       if (response.ok) {
-        router.push("/city");
+        navigateTo("/city", { replace: true });
         return;
       }
 

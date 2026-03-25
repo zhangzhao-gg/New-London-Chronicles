@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
   try {
     const currentUser = await requireCurrentUser();
     const requestedSessionId = request.nextUrl.searchParams.get("sessionId");
+    const includeAnyLiveSession = request.nextUrl.searchParams.get("any") === "1";
 
     const [liveSessions, templates] = await Promise.all([
       selectRows<SessionRow>(
@@ -59,6 +60,8 @@ export async function GET(request: NextRequest) {
     const templateById = new Map(templates.map((template) => [template.id, template]));
     const matchedSession = requestedSessionId
       ? liveSessions.find((session) => session.id === requestedSessionId) ?? null
+      : includeAnyLiveSession
+        ? liveSessions[0] ?? null
       : liveSessions.find((session) => {
           const template = templateById.get(session.task_template_id);
 
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ session: null });
     }
 
-    if (!requestedSessionId && template.type !== "build" && template.type !== "work") {
+    if (!requestedSessionId && !includeAnyLiveSession && template.type !== "build" && template.type !== "work") {
       return NextResponse.json({ session: null });
     }
 
@@ -99,4 +102,3 @@ export async function GET(request: NextRequest) {
     return handleRouteError(error);
   }
 }
-
