@@ -36,29 +36,29 @@ type PlayResult =
   | { ok: false; kind: PlayFailureKind; message: string };
 
 const AMBIENT_SOURCE_MAP: Record<AmbientSoundId, string> = {
-  focus: "/audio/ambient/focus.mp3",
-  chill: "/audio/ambient/chill.mp3",
-  rest: "/audio/ambient/rest.mp3",
+  focus: "/audio/ambient/focus.wav",
+  chill: "/audio/ambient/chill.wav",
+  rest: "/audio/ambient/rest.wav",
 };
 
 const MUSIC_TRACKS: AudioTrack[] = [
   {
     id: "white-furnace",
     title: "White Furnace Echo",
-    fileLabel: "white_furnace_echo.mp3",
-    src: "/audio/music/white-furnace-echo.mp3",
+    fileLabel: "white_furnace_echo.wav",
+    src: "/audio/music/white-furnace-echo.wav",
   },
   {
     id: "signal-lantern",
     title: "Signal Lantern Drift",
-    fileLabel: "signal_lantern_drift.mp3",
-    src: "/audio/music/signal-lantern-drift.mp3",
+    fileLabel: "signal_lantern_drift.wav",
+    src: "/audio/music/signal-lantern-drift.wav",
   },
   {
     id: "ashen-watch",
     title: "Ashen Watch Lullaby",
-    fileLabel: "ashen_watch_lullaby.mp3",
-    src: "/audio/music/ashen-watch-lullaby.mp3",
+    fileLabel: "ashen_watch_lullaby.wav",
+    src: "/audio/music/ashen-watch-lullaby.wav",
   },
 ];
 

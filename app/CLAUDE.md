@@ -3,11 +3,12 @@
 
 成员清单
 
+`city/`: M08 城市地图页入口目录。  
 `focus/`: M10 Focus 页面入口目录。  
 `complete/`: M10 完成页入口目录。  
 `globals.css`: 全局设计 token、共享表面样式与通用视觉基线。  
 `layout.tsx`: 根布局，负责注入 `globals.css` 与全局字体。  
-`page.tsx`: M06 设计系统预览页，提供最小可运行入口与组件验收面。  
+`page.tsx`: M07 登录页入口，负责用户名校验与登录跳转。  
 `CLAUDE.md`: app 目录地图与职责边界。  
 
 法则

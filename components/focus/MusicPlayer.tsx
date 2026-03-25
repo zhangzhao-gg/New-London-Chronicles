@@ -99,7 +99,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
               {snapshot.activeTrack?.title ?? "No Local Track"}
             </div>
             <div className="mt-1 truncate font-mono text-[0.7rem] uppercase tracking-[0.16em] text-[var(--nlc-muted)]">
-              {snapshot.activeTrack?.fileLabel ?? "audio_missing.mp3"}
+              {snapshot.activeTrack?.fileLabel ?? "audio_missing.wav"}
             </div>
           </div>
         </div>
