@@ -4,6 +4,7 @@
 成员清单
 
 `CityPageShell.tsx`: 城市页 HUD 壳层、地图区块与状态面板展示。  
+`DistrictModal.tsx`: M09 区块任务弹窗，消费 `/api/tasks` 并负责 join 跳转。  
 `CLAUDE.md`: city 目录地图与页面展示约束。  
 
 法则

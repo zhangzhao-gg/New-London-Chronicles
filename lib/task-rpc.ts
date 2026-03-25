@@ -8,6 +8,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { SUPABASE_SESSION_COOKIE_NAME } from "@/lib/auth";
+
 export type AppErrorCode =
   | "UNAUTHORIZED"
   | "VALIDATION_ERROR"
@@ -255,7 +257,45 @@ function extractAccessTokenFromParsedCookie(parsed: unknown): string | null {
   return null;
 }
 
+function extractAccessTokenFromSessionCookieValue(cookieValue: string) {
+  const candidates = [cookieValue];
+
+  try {
+    candidates.push(decodeURIComponent(cookieValue));
+  } catch {}
+
+  try {
+    candidates.push(decodeURIComponent(candidates[candidates.length - 1] ?? cookieValue));
+  } catch {}
+
+  for (const candidate of candidates) {
+    const parsed = tryParseJson(candidate);
+
+    if (!parsed || typeof parsed !== "object") {
+      continue;
+    }
+
+    const payload = parsed as Record<string, unknown>;
+
+    if (typeof payload.accessToken === "string" && payload.accessToken.length > 0) {
+      return payload.accessToken;
+    }
+  }
+
+  return null;
+}
+
 function parseSupabaseAccessToken(cookies: ReadonlyArray<CookieLike>) {
+  const customSessionCookie = cookies.find(({ name }) => name === SUPABASE_SESSION_COOKIE_NAME);
+
+  if (customSessionCookie) {
+    const customAccessToken = extractAccessTokenFromSessionCookieValue(customSessionCookie.value);
+
+    if (customAccessToken) {
+      return customAccessToken;
+    }
+  }
+
   const authCookies = cookies.filter(({ name }) => /^sb-.*-auth-token(?:\.\d+)?$/.test(name));
 
   if (authCookies.length === 0) {

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: `useCity(initialUser)`、`@/components/ui/*`、`UI/city.html`
+ * [INPUT]: `useCity(initialUser, initialCity)`、`@/components/ui/*`、`UI/city.html`
  * [OUTPUT]: 城市页客户端 HUD 壳层、区块地图与状态面板展示
  * [POS]: 位于 `components/city/CityPageShell.tsx`，被 `app/city/page.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/city/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
@@ -9,8 +9,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import DistrictModal from "@/components/city/DistrictModal";
 import Button from "@/components/ui/Button";
-import Modal from "@/components/ui/Modal";
 import ResourceIcon, { type ResourceKind } from "@/components/ui/ResourceIcon";
 import Tooltip, { type TooltipSide } from "@/components/ui/Tooltip";
 import {
@@ -167,10 +167,12 @@ function DistrictZone({
   active,
   district,
   onActivate,
+  onOpen,
 }: {
   active: boolean;
   district: CityDistrict;
   onActivate: (districtKey: DistrictKey) => void;
+  onOpen: (districtKey: DistrictKey) => void;
 }) {
   const visual = districtVisuals[district.district];
   const zoneLabel = `${visual.badge} (${visual.englishLabel})`;
@@ -199,7 +201,7 @@ function DistrictZone({
           visual.surfaceClassName,
           active && "scale-[1.02] shadow-[0_0_28px_rgba(255,157,0,0.18)]",
         )}
-        onClick={() => onActivate(district.district)}
+        onClick={() => onOpen(district.district)}
         onFocus={() => onActivate(district.district)}
         onMouseEnter={() => onActivate(district.district)}
         style={{ clipPath: DISTRICT_CLIP_PATH }}
@@ -260,7 +262,7 @@ function StatusNotice({ children, tone = "default" }: { children: string; tone?:
   return <div className={joinClasses("rounded-md border px-4 py-3 text-sm backdrop-blur-sm", toneClassName)}>{children}</div>;
 }
 
-export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
+export function CityPageShell({ initialCity = null, initialUser }: { initialCity?: CitySnapshot | null; initialUser: UserDto }) {
   const {
     actionMessage,
     city,
@@ -277,7 +279,7 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
     setLanguage,
     toggleAutoAssign,
     user,
-  } = useCity(initialUser);
+  } = useCity(initialUser, initialCity);
 
   const [activeDistrictKey, setActiveDistrictKey] = useState<DistrictKey | null>(null);
 
@@ -514,6 +516,10 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
                 district={district}
                 key={district.district}
                 onActivate={setActiveDistrictKey}
+                onOpen={(districtKey) => {
+                  setActiveDistrictKey(districtKey);
+                  setIsTaskModalOpen(true);
+                }}
               />
             ))}
           </div>
@@ -652,32 +658,7 @@ export function CityPageShell({ initialUser }: { initialUser: UserDto }) {
 
       <footer className="h-1 bg-[rgba(244,164,98,0.42)] shadow-[0_0_12px_rgba(244,164,98,0.46)]" />
 
-      <Modal
-        description="M08 仅保留可接入 M09 的任务选择壳层，不实现具体任务列表与分派逻辑。"
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button onClick={() => setIsTaskModalOpen(false)} variant="ghost">
-              Close
-            </Button>
-            <Button onClick={() => setIsTaskModalOpen(false)} variant="secondary">
-              Waiting For M09
-            </Button>
-          </div>
-        }
-        onClose={() => setIsTaskModalOpen(false)}
-        open={isTaskModalOpen}
-        size="lg"
-        title="District Task Modal Placeholder"
-      >
-        <div className="space-y-4 text-sm leading-7 text-[var(--nlc-muted)]">
-          <p className="m-0">当前用户：{user.username}</p>
-          <p className="m-0">自动任务已关闭，因此 `FOCUS` 先进入空 modal 壳层，等待 M09 接入区块任务列表。</p>
-          <div className="rounded-xl border border-dashed border-[rgba(244,164,98,0.2)] px-4 py-6 text-[var(--nlc-text)]">
-            <div className="text-[0.72rem] uppercase tracking-[0.22em] text-[var(--nlc-orange)]">Pending integration</div>
-            <div className="mt-2">这里故意不实现任务列表、区块详情与 join 逻辑，避免越界进入 M09。</div>
-          </div>
-        </div>
-      </Modal>
+      <DistrictModal district={activeDistrict} onClose={() => setIsTaskModalOpen(false)} open={isTaskModalOpen} />
     </div>
   );
 }

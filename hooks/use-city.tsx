@@ -8,9 +8,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import type { UserDto } from "@/lib/auth";
+import { navigateTo } from "@/lib/client-navigation";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -71,6 +71,19 @@ export type CityHookState = {
   toggleAutoAssign: () => Promise<void>;
   user: UserDto;
 };
+
+class CityApiError extends Error {
+  code: string | null;
+
+  constructor(message: string, code: string | null = null) {
+    super(message);
+    this.code = code;
+  }
+}
+
+function isConflictError(error: unknown): error is { code: string } {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "CONFLICT");
+}
 
 async function readJson<T>(response: Response): Promise<T | null> {
   try {
@@ -139,23 +152,40 @@ async function assignNextTask() {
     body: JSON.stringify({}),
   });
 
-  const payload = await readJson<{ redirectTo?: string; sessionId?: string; error?: { message?: string } }>(response);
+  const payload = await readJson<{ redirectTo?: string; sessionId?: string; error?: { code?: string; message?: string } }>(response);
 
   if (!response.ok || !payload) {
-    throw new Error(getApiErrorMessage(payload, "Failed to assign next task."));
+    throw new CityApiError(getApiErrorMessage(payload, "Failed to assign next task."), payload?.error?.code ?? null);
   }
 
   return payload;
 }
 
-export function useCity(initialUser: UserDto): CityHookState {
-  const router = useRouter();
+async function fetchLiveSessionRedirect() {
+  const response = await fetch("/api/session/current?any=1", {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  const payload = await readJson<{ session?: { id: string } | null; error?: { code?: string; message?: string } }>(response);
+
+  if (!response.ok || !payload?.session?.id) {
+    throw new CityApiError(getApiErrorMessage(payload, "Failed to restore live session."), payload?.error?.code ?? null);
+  }
+
+  return `/focus?sessionId=${payload.session.id}`;
+}
+
+export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null = null): CityHookState {
   const mountedRef = useRef(true);
   const assigningRef = useRef(false);
-  const [city, setCity] = useState<CitySnapshot | null>(null);
+  const [city, setCity] = useState<CitySnapshot | null>(initialCity);
   const [user, setUser] = useState(initialUser);
-  const [language, setLanguage] = useState("zh-CN");
-  const [isLoading, setIsLoading] = useState(true);
+  const [language, setLanguage] = useState(initialCity?.currentLanguage ?? "zh-CN");
+  const [isLoading, setIsLoading] = useState(initialCity == null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -209,7 +239,11 @@ export function useCity(initialUser: UserDto): CityHookState {
   }, []);
 
   useEffect(() => {
-    void refreshCity();
+    if (initialCity) {
+      void refreshCity(true);
+    } else {
+      void refreshCity();
+    }
 
     const pollTimer = window.setInterval(() => {
       void refreshCity(true);
@@ -218,7 +252,7 @@ export function useCity(initialUser: UserDto): CityHookState {
     return () => {
       window.clearInterval(pollTimer);
     };
-  }, [refreshCity]);
+  }, [initialCity, refreshCity]);
 
   const toggleAutoAssign = useCallback(async () => {
     const nextValue = !user.autoAssign;
@@ -271,10 +305,26 @@ export function useCity(initialUser: UserDto): CityHookState {
         return;
       }
 
-      router.push(payload.redirectTo || `/focus?sessionId=${payload.sessionId}`);
+      navigateTo(payload.redirectTo || `/focus?sessionId=${payload.sessionId}`);
     } catch (error) {
       if (!mountedRef.current) {
         return;
+      }
+
+      if (isConflictError(error)) {
+        try {
+          const redirectTo = await fetchLiveSessionRedirect();
+
+          if (!mountedRef.current) {
+            return;
+          }
+
+          navigateTo(redirectTo);
+          return;
+        } catch (restoreError) {
+          setActionMessage(restoreError instanceof Error ? restoreError.message : "Failed to restore live session.");
+          return;
+        }
       }
 
       setActionMessage(error instanceof Error ? error.message : "Failed to assign next task.");
@@ -285,7 +335,7 @@ export function useCity(initialUser: UserDto): CityHookState {
         setIsAssigning(false);
       }
     }
-  }, [router, user.autoAssign]);
+  }, [user.autoAssign]);
 
   return {
     actionMessage,
