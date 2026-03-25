@@ -3,7 +3,8 @@
 ## 当前状态
 
 - `app/city/page.tsx` 已落地城市地图页入口
-- `hooks/use-city.ts` 已落地 HUD、30 秒轮询、district tooltip、auto-assign / modal 分支
+- `hooks/use-city.tsx` 已收敛为城市页客户端状态 hook，负责 30 秒轮询、自动任务开关与 `FOCUS` 交互控制
+- `components/city/CityPageShell.tsx` 已承载 HUD、district tooltip 与贴近 `UI/city.html` 的地图壳层
 - 2026-03-24 本地已验证 `npm run typecheck`
 - 2026-03-24 本地已验证 `npm run build`
 
@@ -13,7 +14,7 @@
 
 1. `FOCUS` 主 CTA 依赖 `/focus` 路由，但当前仓库不存在该页面
    - 现状：M08 按 `docs/04-modules.md` 契约，在 `autoAssign = true` 时跳转 `/focus?sessionId=...`
-   - 代码落点：`hooks/use-city.ts` 的 `focus()` 流程、`lib/task-rpc.ts` 的 assign-next 返回结果消费
+   - 代码落点：`hooks/use-city.tsx` 的 `focus()` 流程、`lib/task-rpc.ts` 的 assign-next 返回结果消费
    - 仓库现状：当前 workspace 不包含 `app/focus/page.tsx`，`npm run build` 也不会生成 `/focus` 路由
    - 影响：单独验收城市页时，点击 `FOCUS` 会直接进入 404
    - 判断：这是 M08 与 M10 之间的集成缺口，不应在当前分支擅自改跳转契约或私自加非约定 fallback
@@ -27,10 +28,10 @@
    - 影响：当前更像重复 session 解析与额外 auth 开销，存在后续维护成本
    - 建议：如果后续统一页面级用户注水方案，可收敛这段逻辑，减少重复 auth lookup；但不建议在本分支顺手改动认证链路
 
-3. `hooks/use-city.ts` 当前使用 `// @ts-nocheck`
-   - 原因：当前任务强约束文件名为 `hooks/use-city.ts`，但该文件同时承载 hook 与客户端视图导出
-   - 影响：本地可构建、可运行，但失去该文件内部的完整 TypeScript 保护
-   - 建议：若后续允许拆出 `.tsx` 视图壳层，建议恢复强类型检查并去掉 `ts-nocheck`
+3. 城市页已从 `hooks/` 中拆出展示壳层
+   - 现状：`CityPageShell` 已迁移到 `components/city/CityPageShell.tsx`，`hooks/use-city.tsx` 只保留状态、轮询与任务分配控制
+   - 影响：当前已满足 `hooks/` 仅承载客户端状态逻辑的目录约束，也降低了单文件复杂度
+   - 建议：如后续继续扩展城市页，可继续按展示块拆分 `components/city/` 内部子组件
 
 ### P3 - 当前按契约执行，不建议在 fix 中直接改实现
 
@@ -44,7 +45,7 @@
 - 验证并明确 `/focus` 路由的归属与联调时间点
 - 如负责人确认需要，再补临时 `/focus` 占位方案或联调说明
 - 在不改认证契约的前提下，评估是否收敛页面级重复 session 读取
-- 若文件命名约束解除，拆分 `hooks/use-city.ts` 的视图导出并恢复类型检查
+- 视情况继续拆分 `components/city/` 内部展示块，降低单文件复杂度
 
 ## 本次不建议在当前分支顺手处理的事
 

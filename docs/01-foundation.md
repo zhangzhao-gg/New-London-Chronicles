@@ -62,11 +62,12 @@
 │  └─ page.tsx
 ├─ components/
 │  ├─ city/
+│  │  └─ CityPageShell.tsx
 │  ├─ focus/
 │  ├─ hud/
 │  └─ ui/
 ├─ hooks/
-│  ├─ use-city.ts
+│  ├─ use-city.tsx
 │  └─ use-heartbeat.ts
 ├─ lib/
 │  ├─ auth.ts
