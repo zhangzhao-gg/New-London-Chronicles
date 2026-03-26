@@ -81,6 +81,22 @@
 - 未确认部分：`pending` 或 `paused` 态下是否仍存在偶发不可编辑
 - 状态：待确认
 
+### 4. 倒计时到 `00:00` 后偶发不自动结算
+
+- 现象：Focus 倒计时显示已经到 `00:00`，但页面不会立刻停止，也不会立刻进入完成/结算
+- 初步判断：前端自动结算除了要求 `remainingSeconds === 0`，还额外依赖 heartbeat 队列已清空、请求不在飞行中、会话仍为 `active`
+- 可疑链路：`hooks/use-heartbeat.ts` 中自动结束判定被 `queuedHeartbeatCount`、`queuedHeartbeatCountRef.current`、`isHeartbeatInFlight`、`isPaused`、`remoteStatus` 多重条件共同门控
+- 风险：如果 heartbeat 请求卡住、失败后状态未完全归零，或本地队列与请求态不同步，界面可能停在 `0` 不继续结算
+- 状态：未修复，已定位前端可疑链路
+
+### 5. 双窗口下另一窗口仍可再次点击结算
+
+- 现象：同一个 focus session 同时开两个窗口时，一个窗口完成结算后，另一个窗口仍可能继续点一次“结算”
+- 初步判断：当前 `endingRef` 只是单窗口内存态，没有做跨窗口的 `ending/ended` 同步
+- 风险判断：按 [`docs/03-api-contracts.md`](/Users/zhangzhao/Desktop/worspace/fix-bug/docs/03-api-contracts.md) 约定，`POST /api/session/end` 应为幂等，且 `city_logs` 每个 session 只写一条；理论上不应重复计算或重复写日志
+- 仍未确认：虽然文档契约如此，但当前还没有针对“双窗口重复点击结算”做专项数据库或 E2E 验证，所以是否绝对不会重复计账，暂时不能下最终结论
+- 状态：未修复，是否重复计账待验证
+
 ## 仍有风险或覆盖不足的场景
 
 ### 1. 未补足的专项链路
