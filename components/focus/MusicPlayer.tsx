@@ -88,27 +88,27 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
         className,
       )}
     >
-      <div className="grid gap-3 px-5 py-3 sm:px-7 lg:grid-cols-[1.2fr_auto_1fr] lg:items-center">
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(7,5,4,0.52)] px-4 py-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center border border-[rgba(244,164,98,0.18)] text-[var(--nlc-orange)]">
+      <div className="grid gap-2.5 px-4 py-2.5 sm:px-6 lg:grid-cols-[1.15fr_auto_1fr] lg:items-center">
+        <div className="flex min-w-0 items-center gap-2.5 rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(7,5,4,0.52)] px-3.5 py-2">
+          <div className="flex size-7 shrink-0 items-center justify-center border border-[rgba(244,164,98,0.18)] text-[var(--nlc-orange)]">
             <EqualizerIcon />
           </div>
           <div className="min-w-0">
-            <div className="text-[0.58rem] uppercase tracking-[0.28em] text-[rgba(247,221,197,0.44)]">Soundscape Link 04</div>
-            <div className="mt-1 truncate text-[0.9rem] font-semibold uppercase tracking-[0.14em] text-[var(--nlc-orange)]">
+            <div className="text-[0.52rem] uppercase tracking-[0.24em] text-[rgba(247,221,197,0.44)]">Soundscape Link 04</div>
+            <div className="mt-1 truncate text-[0.82rem] font-semibold uppercase tracking-[0.14em] text-[var(--nlc-orange)]">
               {snapshot.activeTrack?.title ?? "No Local Track"}
             </div>
-            <div className="mt-1 truncate font-mono text-[0.7rem] uppercase tracking-[0.16em] text-[var(--nlc-muted)]">
+            <div className="mt-0.5 truncate font-mono text-[0.64rem] uppercase tracking-[0.14em] text-[var(--nlc-muted)]">
               {snapshot.activeTrack?.fileLabel ?? "audio_missing.wav"}
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-center">
-          <div className="flex items-center gap-2 rounded-full border border-[rgba(244,164,98,0.2)] bg-[rgba(7,5,4,0.72)] px-3 py-2">
+          <div className="flex items-center gap-2 rounded-full border border-[rgba(244,164,98,0.2)] bg-[rgba(7,5,4,0.72)] px-3 py-1.5">
             <button
               aria-label="上一首"
-              className="nlc-focus-ring inline-flex size-8 items-center justify-center text-[var(--nlc-muted)] transition-colors hover:text-[var(--nlc-orange)] disabled:cursor-not-allowed disabled:opacity-35"
+              className="nlc-focus-ring inline-flex size-7 items-center justify-center text-[var(--nlc-muted)] transition-colors hover:text-[var(--nlc-orange)] disabled:cursor-not-allowed disabled:opacity-35"
               disabled={!snapshot.activeTrack}
               onClick={() => {
                 void audioManager.previousTrack();
@@ -120,7 +120,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
 
             <button
               aria-label={snapshot.isMusicPlaying ? "暂停播放" : "开始播放"}
-              className="nlc-focus-ring inline-flex size-10 items-center justify-center border border-[rgba(255,208,165,0.34)] bg-[linear-gradient(180deg,#f6b16f_0%,var(--nlc-orange)_100%)] text-[var(--nlc-dark)] shadow-[0_0_18px_rgba(244,164,98,0.18)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="nlc-focus-ring inline-flex size-9 items-center justify-center border border-[rgba(255,208,165,0.34)] bg-[linear-gradient(180deg,#f6b16f_0%,var(--nlc-orange)_100%)] text-[var(--nlc-dark)] shadow-[0_0_18px_rgba(244,164,98,0.18)] disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!snapshot.activeTrack}
               onClick={() => {
                 void audioManager.toggleMusic();
@@ -132,7 +132,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
 
             <button
               aria-label="下一首"
-              className="nlc-focus-ring inline-flex size-8 items-center justify-center text-[var(--nlc-muted)] transition-colors hover:text-[var(--nlc-orange)] disabled:cursor-not-allowed disabled:opacity-35"
+              className="nlc-focus-ring inline-flex size-7 items-center justify-center text-[var(--nlc-muted)] transition-colors hover:text-[var(--nlc-orange)] disabled:cursor-not-allowed disabled:opacity-35"
               disabled={!snapshot.activeTrack}
               onClick={() => {
                 void audioManager.nextTrack();
@@ -144,15 +144,15 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(7,5,4,0.52)] px-4 py-2.5">
+        <div className="flex items-center justify-between gap-4 rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(7,5,4,0.52)] px-3.5 py-2">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-3 text-[0.58rem] uppercase tracking-[0.28em] text-[rgba(247,221,197,0.44)]">
+            <div className="flex items-center justify-between gap-3 text-[0.52rem] uppercase tracking-[0.24em] text-[rgba(247,221,197,0.44)]">
               <span>Volume</span>
               <span className="font-mono text-[var(--nlc-orange)]">{Math.round(snapshot.musicVolume * 100)}%</span>
             </div>
             <input
               aria-label="播放器音量"
-              className="nlc-focus-ring mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-none border border-[rgba(244,164,98,0.16)] bg-[rgba(255,255,255,0.05)] accent-[var(--nlc-orange)]"
+              className="nlc-focus-ring mt-2.5 h-1.5 w-full cursor-pointer appearance-none rounded-none border border-[rgba(244,164,98,0.16)] bg-[rgba(255,255,255,0.05)] accent-[var(--nlc-orange)]"
               max="100"
               min="0"
               onChange={(event) => {

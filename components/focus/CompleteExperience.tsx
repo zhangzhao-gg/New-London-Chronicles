@@ -228,7 +228,7 @@ export function CompleteExperience({ initialUser }: { initialUser: UserDto }) {
             </Button>
             <Button
               disabled={isAssigning}
-              onClick={() => navigateTo("/city")}
+              onClick={() => navigateTo("/city?openTasks=1")}
               size="lg"
               variant={initialUser.autoAssign ? "ghost" : "primary"}
             >
