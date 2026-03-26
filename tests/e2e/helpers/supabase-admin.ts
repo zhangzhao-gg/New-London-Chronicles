@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、可选 `.env.local`、各测试场景传入的用户/任务/session 标识
+ * [OUTPUT]: 为 E2E 提供 Supabase 管理操作，包括测试数据准备、状态读取、资源调整、session 轮询与清理
+ * [POS]: 位于 `tests/e2e/helpers/`，仅供浏览器端 E2E 辅助代码调用，不参与生产运行时
+ * [PROTOCOL]: 直接调用 Supabase REST API，使用 service role 凭证执行测试前置与清理写操作
+ */
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 

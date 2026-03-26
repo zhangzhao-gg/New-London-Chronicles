@@ -108,7 +108,6 @@ test.describe.serial("real user flows", () => {
 
       await page.getByRole("button", { name: "资源区" }).click();
       await expect(page.getByRole("dialog", { name: "资源区" })).toBeVisible();
-      await page.waitForTimeout(3_000);
       const coalTask = page.locator("article").filter({ hasText: "采集煤炭" });
       await expect(coalTask).toBeVisible({ timeout: 20_000 });
 
@@ -123,7 +122,7 @@ test.describe.serial("real user flows", () => {
 
       await page.fill("#focus-duration-input", "1");
       await page.getByRole("button", { name: "开始", exact: true }).click();
-      await page.waitForTimeout(1_200);
+      await expect(page.getByRole("button", { name: "暂停", exact: true })).toBeVisible();
       const heartbeatResponse = await browserJson(page, {
         url: "/api/session/heartbeat",
         method: "POST",
@@ -321,30 +320,17 @@ test.describe.serial("real user flows", () => {
         createdInstanceId = buildInstance.instanceId;
       }
 
-      const joinPayload = await page.evaluate(
-        async (payload) => {
-          const response = await fetch("/api/tasks/join", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
-
-          return {
-            body: await response.json(),
-            ok: response.ok,
-          };
-        },
-        {
+      const joinPayload = await browserJson<{ sessionId: string }>(page, {
+        url: "/api/tasks/join",
+        method: "POST",
+        body: {
           instanceId: buildInstance.instanceId,
           templateId: buildTentTemplate.id,
         },
-      );
+      });
       expect(joinPayload.ok).toBeTruthy();
 
-      await page.goto(`/focus?sessionId=${(joinPayload.body as { sessionId: string }).sessionId}`);
+      await page.goto(`/focus?sessionId=${joinPayload.body.sessionId}`);
       await expect(page.getByText("建造帐篷", { exact: true })).toBeVisible();
 
       await page.goto("/focus");
