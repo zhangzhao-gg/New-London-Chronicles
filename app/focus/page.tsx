@@ -24,12 +24,18 @@ async function getCurrentUser() {
   );
 }
 
-export default async function FocusPage() {
+export default async function FocusPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getCurrentUser();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestedSessionId = typeof resolvedSearchParams?.sessionId === "string" ? resolvedSearchParams.sessionId : null;
 
   if (!session) {
     redirect("/");
   }
 
-  return <FocusExperience initialUser={session.user} />;
+  return <FocusExperience initialSessionId={requestedSessionId} initialUser={session.user} />;
 }

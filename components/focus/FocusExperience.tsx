@@ -8,7 +8,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
 
 import MusicPlayer from "@/components/focus/MusicPlayer";
 import type { UserDto } from "@/lib/auth";
@@ -84,6 +83,10 @@ async function fetchCurrentSession(sessionId: string | null) {
   });
 
   const payload = await readJson<SessionResponse>(response);
+
+  if (response.status === 404) {
+    return null;
+  }
 
   if (!response.ok || !payload) {
     throw new Error(getApiErrorMessage(payload, "Failed to restore current session."));
@@ -257,11 +260,13 @@ function SystemNotice({ children, tone = "default" }: { children: string; tone?:
 }
 
 function TimerControl({
+  ariaLabel,
   children,
   disabled = false,
   onClick,
   primary = false,
 }: {
+  ariaLabel: string;
   children: React.ReactNode;
   disabled?: boolean;
   onClick?: () => void;
@@ -269,6 +274,7 @@ function TimerControl({
 }) {
   return (
     <button
+      aria-label={ariaLabel}
       className={joinClasses(
         "nlc-focus-ring inline-flex size-11 items-center justify-center border transition-all",
         primary
@@ -285,15 +291,19 @@ function TimerControl({
   );
 }
 
-export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
+export function FocusExperience({
+  initialSessionId,
+  initialUser,
+}: {
+  initialSessionId: string | null;
+  initialUser: UserDto;
+}) {
   const audioManager = useMemo(() => getAudioManager(), []);
   const audioSnapshot = useSyncExternalStore(
     audioManager.subscribe,
     audioManager.getSnapshot,
     audioManager.getSnapshot,
   );
-  const searchParams = useSearchParams();
-  const requestedSessionId = searchParams.get("sessionId");
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -309,7 +319,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
       setErrorMessage(null);
 
       try {
-        const restoredSession = await fetchCurrentSession(requestedSessionId);
+        const restoredSession = await fetchCurrentSession(initialSessionId);
 
         if (cancelled) {
           return;
@@ -337,7 +347,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
     return () => {
       cancelled = true;
     };
-  }, [requestedSessionId]);
+  }, [initialSessionId]);
 
   const {
     cycleHeartbeatCount,
@@ -385,6 +395,10 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
     () => resolveFocusStateLabel(remoteStatus, isRunning),
     [isRunning, remoteStatus],
   );
+  const primaryActionLabel = useMemo(
+    () => resolvePrimaryActionLabel(remoteStatus, isPaused),
+    [isPaused, remoteStatus],
+  );
 
   const objectiveSummary = session ? session.task.name : "Awaiting current objective";
   const systemStatus = remoteStatus === "active" ? "System Active" : isLoading ? "System Restoring" : "System Idle";
@@ -414,7 +428,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
   );
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#070504] text-[var(--nlc-text)]">
+    <div className="relative min-h-screen overflow-hidden bg-[#070504] text-[var(--nlc-text)] lg:h-screen">
       <div
         aria-hidden="true"
         className="absolute inset-0 opacity-100"
@@ -428,21 +442,21 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,4,0.62),rgba(7,5,4,0.92))]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,164,98,0.06),transparent_36%)]" />
 
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex min-h-screen flex-col lg:h-screen">
         <header className="border-b border-[rgba(244,164,98,0.18)] bg-[rgba(13,9,7,0.96)]">
-          <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-7">
-            <div className="flex items-center gap-4">
-              <div className="flex size-8 items-center justify-center text-[var(--nlc-orange)]">
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="flex size-7 items-center justify-center text-[var(--nlc-orange)]">
                 <HeaderGlyph />
               </div>
               <div>
-                <div className="text-[0.72rem] font-semibold uppercase tracking-[0.34em] text-[var(--nlc-orange)]">
+                <div className="text-[0.66rem] font-semibold uppercase tracking-[0.3em] text-[var(--nlc-orange)]">
                   Expedition Focus
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 text-[0.66rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">
+            <div className="flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">
               <span className="hidden items-center gap-2 sm:inline-flex">
                 <HeaderGlyph />
                 -20 C
@@ -453,32 +467,32 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
               <span className="hidden items-center gap-2 sm:inline-flex">
                 <HistoryGlyph />
               </span>
-              <span className="flex h-8 w-8 items-center justify-center border border-[rgba(244,164,98,0.2)] bg-[rgba(247,237,226,0.96)] text-[#1f1610]">
+              <span className="flex h-7 w-7 items-center justify-center border border-[rgba(244,164,98,0.2)] bg-[rgba(247,237,226,0.96)] text-[#1f1610]">
                 I
               </span>
             </div>
           </div>
 
-          <div className="grid border-t border-[rgba(244,164,98,0.12)] text-[0.66rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)] lg:grid-cols-[1.1fr_1.2fr_0.9fr]">
-            <div className="flex items-center gap-3 border-b border-[rgba(244,164,98,0.08)] px-5 py-3 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
+          <div className="grid border-t border-[rgba(244,164,98,0.12)] text-[0.6rem] uppercase tracking-[0.16em] text-[var(--nlc-muted)] lg:grid-cols-[1fr_1.15fr_0.85fr]">
+            <div className="flex items-center gap-2 border-b border-[rgba(244,164,98,0.08)] px-4 py-2 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
               <span className="text-[rgba(244,164,98,0.46)]">Region</span>
               <span className="text-[var(--nlc-orange)]">{districtLabel}</span>
             </div>
-            <div className="flex items-center gap-3 border-b border-[rgba(244,164,98,0.08)] px-5 py-3 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
+            <div className="flex items-center gap-2 border-b border-[rgba(244,164,98,0.08)] px-4 py-2 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
               <span className="text-[rgba(244,164,98,0.46)]">Current Objective</span>
               <span className="truncate text-[var(--nlc-orange)]">{objectiveSummary}</span>
             </div>
-            <div className="flex items-center justify-between gap-3 px-5 py-3">
+            <div className="flex items-center justify-between gap-2 px-4 py-2">
               <span className="text-[rgba(244,164,98,0.46)]">Captain {initialUser.username}</span>
               <span className="text-[var(--nlc-orange)]">{systemStatus}</span>
             </div>
           </div>
         </header>
 
-        <main className="grid min-h-0 flex-1 overflow-hidden pb-[7.5rem] lg:grid-cols-[34%_66%]">
+        <main className="grid min-h-0 flex-1 overflow-hidden pb-[5.5rem] lg:grid-cols-[30%_70%]">
           <aside className="flex min-h-0 flex-col overflow-hidden border-b border-[rgba(244,164,98,0.12)] lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.18)]">
             <section
-              className="relative min-h-[12rem] flex-[0.74] overflow-hidden border-b border-[rgba(244,164,98,0.16)] px-6 py-7 sm:px-8"
+              className="relative min-h-[9rem] flex-[0.68] overflow-hidden border-b border-[rgba(244,164,98,0.16)] px-4 py-4 sm:px-5"
               style={{
                 backgroundImage: `linear-gradient(180deg,rgba(93,122,153,0.72),rgba(45,58,72,0.54)), linear-gradient(90deg,rgba(18,14,12,0.02),rgba(18,14,12,0.54)), url(${FOCUS_BACKGROUND_URL})`,
                 backgroundPosition: "center",
@@ -488,41 +502,41 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,8,10,0.08),rgba(6,8,10,0.4))]" />
               <div className="relative">
                 <div className="flex items-center justify-between gap-4">
-                  <h2 className="m-0 text-[1.65rem] font-semibold uppercase italic tracking-[0.04em] text-[#eef1f5]">
+                  <h2 className="m-0 text-[1.2rem] font-semibold uppercase italic tracking-[0.04em] text-[#eef1f5]">
                     Shift Objectives
                   </h2>
-                  <span className="text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-[var(--nlc-orange)]">
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.26em] text-[var(--nlc-orange)]">
                     Priority Alpha
                   </span>
                 </div>
 
-                <ul className="mt-6 divide-y divide-[rgba(238,241,245,0.12)] border-t border-[rgba(238,241,245,0.16)]">
+                <ul className="mt-3 divide-y divide-[rgba(238,241,245,0.12)] border-t border-[rgba(238,241,245,0.16)]">
                   {objectives.map((row) => (
                     <ObjectiveItem key={row.id} row={row} />
                   ))}
                 </ul>
 
-                <div className="mt-5 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-[var(--nlc-orange)]">
+                <div className="mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[var(--nlc-orange)]">
                   + New Objective
                 </div>
               </div>
             </section>
 
-            <section className="flex-[0.26] px-6 py-4 sm:px-8">
-              <div className="rounded-sm border border-[rgba(244,164,98,0.18)] bg-[rgba(10,7,5,0.6)] px-6 py-5">
-                <div className="flex items-center justify-between gap-4 border-b border-[rgba(244,164,98,0.14)] pb-4">
-                  <h3 className="m-0 text-[1.2rem] font-semibold uppercase tracking-[0.08em] text-[var(--nlc-orange)]">
+            <section className="flex-[0.32] px-4 py-3 sm:px-5">
+              <div className="rounded-sm border border-[rgba(244,164,98,0.18)] bg-[rgba(10,7,5,0.6)] px-4 py-3.5">
+                <div className="flex items-center justify-between gap-4 border-b border-[rgba(244,164,98,0.14)] pb-2.5">
+                  <h3 className="m-0 text-[0.92rem] font-semibold uppercase tracking-[0.08em] text-[var(--nlc-orange)]">
                     Expedition Notes
                   </h3>
-                  <span className="text-[0.7rem] uppercase tracking-[0.26em] text-[var(--nlc-muted)]">Encrypted</span>
+                  <span className="text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Encrypted</span>
                 </div>
                 <textarea
-                  className="mt-4 h-32 w-full resize-none rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(5,4,3,0.62)] px-4 py-4 text-[1rem] leading-7 text-[rgba(247,221,197,0.88)] outline-none transition focus:border-[rgba(255,157,0,0.48)]"
+                  className="mt-3 h-20 w-full resize-none rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(5,4,3,0.62)] px-3.5 py-2.5 text-[0.88rem] leading-5 text-[rgba(247,221,197,0.88)] outline-none transition focus:border-[rgba(255,157,0,0.48)]"
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Log observations of the frost creep..."
                   value={notes}
                 />
-                <div className="mt-4 flex items-center justify-between text-[0.62rem] uppercase tracking-[0.22em] text-[rgba(247,221,197,0.42)]">
+                <div className="mt-3 flex items-center justify-between text-[0.58rem] uppercase tracking-[0.18em] text-[rgba(247,221,197,0.42)]">
                   <span>Logged live</span>
                   <span>{notes.trim() ? `${notes.length} chars` : "Encrypted"}</span>
                 </div>
@@ -530,7 +544,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
             </section>
           </aside>
 
-          <section className="relative flex min-h-0 flex-col justify-between overflow-hidden px-6 py-5 sm:px-8">
+          <section className="relative flex min-h-0 flex-col justify-between overflow-hidden px-5 py-4 sm:px-6">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute left-3 top-3 h-1.5 w-1.5 bg-[rgba(244,164,98,0.4)]" />
               <div className="absolute right-3 top-3 h-1.5 w-1.5 bg-[rgba(244,164,98,0.4)]" />
@@ -539,45 +553,46 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
             </div>
 
             <div className="flex flex-1 items-center justify-center">
-              <div className="w-full max-w-[33rem]">
-                <div className="rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(14,10,8,0.88)] px-8 py-8 shadow-[0_0_32px_rgba(244,164,98,0.08)]">
-                  <div className="mx-auto flex max-w-[18rem] flex-col items-center text-center">
-                    <div className="text-[0.76rem] font-semibold uppercase tracking-[0.34em] text-[var(--nlc-orange)]">
+              <div className="w-full max-w-[25.5rem]">
+                <div className="rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(14,10,8,0.88)] px-5 py-5 shadow-[0_0_28px_rgba(244,164,98,0.08)]">
+                  <div className="mx-auto flex max-w-[14.5rem] flex-col items-center text-center">
+                    <div className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[var(--nlc-orange)]">
                       {focusStateLabel}
                     </div>
 
-                    <div className="mt-6 flex aspect-square w-full max-w-[19rem] items-center justify-center rounded-full border-[12px] border-[#0d0907] bg-[#0d0907] shadow-[0_0_40px_rgba(0,0,0,0.42)]">
-                      <div className="flex aspect-square w-full max-w-[16.4rem] flex-col items-center justify-center rounded-full border border-[rgba(244,164,98,0.18)] bg-[radial-gradient(circle_at_top,rgba(244,164,98,0.06),rgba(8,6,4,0.98)_68%)] px-6 shadow-[inset_0_0_80px_rgba(244,164,98,0.03)]">
-                        <div className="text-[0.7rem] uppercase tracking-[0.34em] text-[var(--nlc-muted)]">Deep Focus Cycle</div>
-                        <div className="mt-5 font-mono text-[4.6rem] font-black tracking-[-0.08em] text-[var(--nlc-orange)] drop-shadow-[0_0_20px_rgba(244,164,98,0.22)] sm:text-[5.2rem]">
+                    <div className="mt-4 flex aspect-square w-full max-w-[14.75rem] items-center justify-center rounded-full border-[9px] border-[#0d0907] bg-[#0d0907] shadow-[0_0_30px_rgba(0,0,0,0.42)]">
+                      <div className="flex aspect-square w-full max-w-[12.2rem] flex-col items-center justify-center rounded-full border border-[rgba(244,164,98,0.18)] bg-[radial-gradient(circle_at_top,rgba(244,164,98,0.06),rgba(8,6,4,0.98)_68%)] px-4 shadow-[inset_0_0_64px_rgba(244,164,98,0.03)]">
+                        <div className="text-[0.62rem] uppercase tracking-[0.28em] text-[var(--nlc-muted)]">Deep Focus Cycle</div>
+                        <div className="mt-3 font-mono text-[3.35rem] font-black tracking-[-0.08em] text-[var(--nlc-orange)] drop-shadow-[0_0_20px_rgba(244,164,98,0.22)] sm:text-[3.8rem]">
                           {formatSeconds(displaySeconds)}
                         </div>
 
-                        <div className="mt-7 flex items-center justify-center gap-6">
+                        <div className="mt-5 flex items-center justify-center gap-4">
                           <TimerControl
+                            ariaLabel={primaryActionLabel}
                             disabled={!isSessionReady || !isReady || isStarting || isEnding}
                             onClick={() => void toggleStartPause()}
                             primary
                           >
                             <PlayGlyph paused={!isSessionReady || isStarting ? true : isPaused} />
                           </TimerControl>
-                          <TimerControl disabled={!isSessionReady || !isReady || isEnding} onClick={resetTimer}>
+                          <TimerControl ariaLabel="重来" disabled={!isSessionReady || !isReady || isEnding} onClick={resetTimer}>
                             <ResetGlyph />
                           </TimerControl>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-[-0.85rem] flex items-center justify-center gap-3">
-                      <div className="rounded-sm border border-[rgba(244,164,98,0.24)] bg-[rgba(8,6,4,0.96)] px-4 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.26em] text-[var(--nlc-orange)]">
+                    <div className="mt-[-0.55rem] flex items-center justify-center gap-2">
+                      <div className="rounded-sm border border-[rgba(244,164,98,0.24)] bg-[rgba(8,6,4,0.96)] px-2.5 py-1 text-[0.54rem] font-semibold uppercase tracking-[0.2em] text-[var(--nlc-orange)]">
                         Shift {cycleHeartbeatCount + 1}/4
                       </div>
-                      <div className="rounded-sm border border-[rgba(244,164,98,0.24)] bg-[rgba(8,6,4,0.96)] px-4 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.26em] text-[var(--nlc-orange)]">
+                      <div className="rounded-sm border border-[rgba(244,164,98,0.24)] bg-[rgba(8,6,4,0.96)] px-2.5 py-1 text-[0.54rem] font-semibold uppercase tracking-[0.2em] text-[var(--nlc-orange)]">
                         Core {remoteStatus === "active" ? "Nominal" : "Standby"}
                       </div>
                     </div>
 
-                    <div className="mt-7 grid w-full grid-cols-3 gap-3">
+                    <div className="mt-4 grid w-full grid-cols-3 gap-2">
                       {ambientOptions.map((option) => {
                         const isActive = audioSnapshot.ambientSoundId === option.id;
 
@@ -586,7 +601,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
                             key={option.id}
                             aria-pressed={isActive}
                             className={joinClasses(
-                              "nlc-focus-ring flex flex-col items-center gap-2 rounded-sm border px-3 py-3 transition-all",
+                              "nlc-focus-ring flex flex-col items-center gap-1 rounded-sm border px-2 py-2 transition-all",
                               isActive
                                 ? "border-[rgba(255,157,0,0.42)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]"
                                 : "border-[rgba(244,164,98,0.18)] bg-[rgba(8,6,4,0.72)] text-[var(--nlc-muted)] opacity-55 hover:opacity-100 hover:text-[var(--nlc-orange)]",
@@ -597,21 +612,21 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
                             type="button"
                           >
                             <AmbientGlyph soundId={option.id} />
-                            <span className="text-[0.62rem] font-semibold uppercase tracking-[0.24em]">{option.label}</span>
-                            <span className="text-[0.56rem] uppercase tracking-[0.16em]">{option.hint}</span>
+                            <span className="text-[0.54rem] font-semibold uppercase tracking-[0.18em]">{option.label}</span>
+                            <span className="text-[0.48rem] uppercase tracking-[0.12em]">{option.hint}</span>
                           </button>
                         );
                       })}
                     </div>
 
-                    <div className="mt-6 flex items-center gap-5 text-[0.56rem] uppercase tracking-[0.28em] text-[rgba(247,221,197,0.28)]">
-                      <span className="h-px w-12 bg-[rgba(244,164,98,0.16)]" />
+                    <div className="mt-4 flex items-center gap-3 text-[0.5rem] uppercase tracking-[0.2em] text-[rgba(247,221,197,0.28)]">
+                      <span className="h-px w-10 bg-[rgba(244,164,98,0.16)]" />
                       <span>{audioSnapshot.lastError ? "Audio standby" : "Unit 0924 monitoring"}</span>
-                      <span className="h-px w-12 bg-[rgba(244,164,98,0.16)]" />
+                      <span className="h-px w-10 bg-[rgba(244,164,98,0.16)]" />
                     </div>
 
                     <button
-                      className="nlc-focus-ring mt-6 inline-flex h-10 items-center justify-center rounded-sm border border-[rgba(244,164,98,0.22)] bg-[rgba(10,7,5,0.76)] px-5 text-[0.72rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)] transition-colors hover:border-[rgba(255,157,0,0.42)] hover:text-[var(--nlc-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="nlc-focus-ring mt-4 inline-flex h-8.5 items-center justify-center rounded-sm border border-[rgba(244,164,98,0.22)] bg-[rgba(10,7,5,0.76)] px-4 text-[0.62rem] uppercase tracking-[0.18em] text-[var(--nlc-muted)] transition-colors hover:border-[rgba(255,157,0,0.42)] hover:text-[var(--nlc-orange)] disabled:cursor-not-allowed disabled:opacity-40"
                       disabled={!isSessionReady || isEnding}
                       onClick={() => void stopSession()}
                       type="button"
@@ -621,13 +636,13 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+                <div className="mt-2.5 grid gap-2.5 lg:grid-cols-[1fr_0.92fr]">
                   <label className="block" htmlFor="focus-duration-input">
                     <span className="block text-[0.68rem] uppercase tracking-[0.26em] text-[var(--nlc-muted)]">
                       Duration
                     </span>
                     <input
-                      className="mt-3 h-12 w-full rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(10,7,5,0.76)] px-4 text-xl text-[var(--nlc-text)] outline-none transition focus:border-[rgba(255,157,0,0.5)] disabled:cursor-not-allowed disabled:opacity-45"
+                      className="mt-2 h-10 w-full rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(10,7,5,0.76)] px-4 text-base text-[var(--nlc-text)] outline-none transition focus:border-[rgba(255,157,0,0.5)] disabled:cursor-not-allowed disabled:opacity-45"
                       disabled={!isSessionReady || !canEditDuration}
                       id="focus-duration-input"
                       inputMode="numeric"
@@ -650,7 +665,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
                     />
                   </label>
 
-                  <div className="rounded-sm border border-[rgba(244,164,98,0.16)] bg-[rgba(10,7,5,0.52)] px-4 py-4 text-[0.74rem] leading-6 text-[var(--nlc-muted)]">
+                  <div className="rounded-sm border border-[rgba(244,164,98,0.16)] bg-[rgba(10,7,5,0.52)] px-4 py-3 text-[0.64rem] leading-5 text-[var(--nlc-muted)]">
                     {!isSessionReady
                       ? "正在恢复 session 数据，恢复完成后才能启动本轮计时。"
                       : remoteStatus === "pending"
@@ -661,7 +676,7 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
                   </div>
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-2.5 space-y-2">
                   {isLoading ? <SystemNotice>Restoring current session...</SystemNotice> : null}
                   {statusMessage ? <SystemNotice>{statusMessage}</SystemNotice> : null}
                   {currentErrorMessage ? <SystemNotice tone="error">{currentErrorMessage}</SystemNotice> : null}
@@ -675,12 +690,12 @@ export function FocusExperience({ initialUser }: { initialUser: UserDto }) {
         </main>
 
         <div className="fixed inset-x-0 bottom-0 z-30">
-          <nav className="flex items-center justify-center border-y border-[rgba(244,164,98,0.18)] bg-[rgba(12,9,7,0.96)] px-6 py-0.5 text-[0.7rem] uppercase tracking-[0.28em] text-[var(--nlc-muted)]">
+          <nav className="flex items-center justify-center border-y border-[rgba(244,164,98,0.18)] bg-[rgba(12,9,7,0.96)] px-5 py-0.5 text-[0.58rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">
             <div className="inline-flex items-center">
               {["Chrono", "Grid", "Cargo", "Signal"].map((tab, index) => (
                 <div
                   className={joinClasses(
-                    "flex items-center justify-center border-r border-[rgba(244,164,98,0.14)] px-9 py-3",
+                    "flex items-center justify-center border-r border-[rgba(244,164,98,0.14)] px-6 py-2",
                     index === 0 && "rounded-sm border border-[rgba(244,164,98,0.22)] bg-[rgba(244,164,98,0.06)] text-[var(--nlc-orange)]",
                     index !== 0 && "text-[var(--nlc-muted)]",
                     index === 0 && "mr-0",

@@ -7,7 +7,8 @@
     "dev:young": "NODE_TLS_REJECT_UNAUTHORIZED=0 next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "npm run --silent build && tsc --noEmit",
+    "test:e2e": "npm run --silent build && playwright test"
   },
   "ts-node": {
     "compilerOptions": {

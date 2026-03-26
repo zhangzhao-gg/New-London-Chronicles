@@ -83,6 +83,7 @@ type UseHeartbeatResult = {
 
 const HEARTBEAT_SECONDS = 10 * 60;
 const TASK_POLL_INTERVAL_MS = 30_000;
+const DEFAULT_PENDING_FOCUS_MINUTES = 25;
 
 function getStorageKey(sessionId: string) {
   return `nlc:focus-state:${sessionId}`;
@@ -321,12 +322,18 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
 
     cycleHeartbeatCountRef.current = 0;
     setCycleHeartbeatCount(0);
+    setIsPaused(true);
+
+    if (nextRemoteStatus === "pending") {
+      setSelectedMinutesState(DEFAULT_PENDING_FOCUS_MINUTES);
+      setRemainingSeconds(DEFAULT_PENDING_FOCUS_MINUTES * 60);
+      setStatusMessage("已载入默认 25 分钟时长，可直接开始。");
+      return;
+    }
+
     setSelectedMinutesState(null);
     setRemainingSeconds(null);
-    setIsPaused(true);
-    setStatusMessage(
-      nextRemoteStatus === "active" ? "检测到可恢复 session，请重新输入本轮时长后继续。" : "输入本轮时长后即可开始。",
-    );
+    setStatusMessage("检测到可恢复 session，请重新输入本轮时长后继续。");
   }, [session]);
 
   useEffect(() => {
@@ -487,6 +494,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       isPaused ||
       remainingSeconds !== 0 ||
       queuedHeartbeatCount > 0 ||
+      queuedHeartbeatCountRef.current > 0 ||
       isHeartbeatInFlight ||
       endingRef.current
     ) {

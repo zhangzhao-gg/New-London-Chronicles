@@ -8,6 +8,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import DistrictModal from "@/components/city/DistrictModal";
 import Button from "@/components/ui/Button";
@@ -263,6 +264,7 @@ function StatusNotice({ children, tone = "default" }: { children: string; tone?:
 }
 
 export function CityPageShell({ initialCity = null, initialUser }: { initialCity?: CitySnapshot | null; initialUser: UserDto }) {
+  const searchParams = useSearchParams();
   const {
     actionMessage,
     city,
@@ -282,6 +284,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
   } = useCity(initialUser, initialCity);
 
   const [activeDistrictKey, setActiveDistrictKey] = useState<DistrictKey | null>(null);
+  const [hasHandledOpenTasksQuery, setHasHandledOpenTasksQuery] = useState(false);
 
   const resources = useMemo(() => resourceRows(city), [city]);
   const districts = city?.districts ?? [];
@@ -299,6 +302,24 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     );
   }, [districts]);
 
+  useEffect(() => {
+    if (hasHandledOpenTasksQuery) {
+      return;
+    }
+
+    if (searchParams.get("openTasks") !== "1") {
+      setHasHandledOpenTasksQuery(true);
+      return;
+    }
+
+    if (user.autoAssign || !districts.length) {
+      return;
+    }
+
+    setIsTaskModalOpen(true);
+    setHasHandledOpenTasksQuery(true);
+  }, [districts.length, hasHandledOpenTasksQuery, searchParams, setIsTaskModalOpen, user.autoAssign]);
+
   const activeDistrict = useMemo(
     () => districts.find((district) => district.district === activeDistrictKey) ?? districts[0] ?? null,
     [activeDistrictKey, districts],
@@ -307,7 +328,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
   const activeBuildingCount = city?.buildings.length ?? 0;
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[radial-gradient(circle_at_top,#342015_0%,#140d09_46%,#090604_100%)] text-[var(--nlc-text)]">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[radial-gradient(circle_at_top,#342015_0%,#140d09_46%,#090604_100%)] text-[var(--nlc-text)] lg:h-screen lg:overflow-hidden">
       <header className="sticky top-0 z-50 border-b-2 border-[rgba(244,164,98,0.22)] bg-[rgba(20,13,9,0.94)] px-4 py-2 backdrop-blur-md sm:px-6">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
           <div className="flex items-center gap-6">
@@ -370,11 +391,11 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
       </header>
 
       <div className="border-b border-[rgba(244,164,98,0.1)] bg-gradient-to-b from-[rgba(20,13,9,0.94)] to-[rgba(0,0,0,0.58)]">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap justify-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-[1360px] flex-wrap justify-center gap-2.5 px-4 py-2.5">
           {resources.map((item) => (
             <div
               className={joinClasses(
-                "flex min-w-[148px] items-center gap-3 bg-black/40 px-3 py-2",
+                "flex min-w-[132px] items-center gap-2.5 bg-black/40 px-3 py-2",
                 item.resource === "temperature"
                   ? "border-l-2 border-[rgba(255,157,0,0.48)]"
                   : "border-l-2 border-[rgba(244,164,98,0.32)]",
@@ -393,7 +414,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 </p>
                 <p
                   className={joinClasses(
-                    "m-0 mt-1 text-lg font-bold leading-none",
+                    "m-0 mt-1 text-base font-bold leading-none",
                     item.resource === "temperature" ? "text-[var(--nlc-amber)]" : "text-slate-100",
                   )}
                 >
@@ -405,14 +426,14 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
         </div>
       </div>
 
-      <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="border-b border-[rgba(244,164,98,0.14)] bg-[rgba(12,8,5,0.9)] px-3 py-4 lg:flex lg:min-h-[calc(100vh-129px)] lg:w-64 lg:flex-col lg:justify-between lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.14)]">
+      <main className="flex min-h-0 flex-1 flex-col lg:min-h-0 lg:flex-row lg:overflow-hidden">
+        <aside className="border-b border-[rgba(244,164,98,0.14)] bg-[rgba(12,8,5,0.9)] px-3 py-3 lg:flex lg:min-h-0 lg:w-56 lg:flex-col lg:justify-between lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.14)]">
           <div>
             <div className="mb-4 flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
               {navItems.map((item) => (
                 <button
                   className={joinClasses(
-                    "flex min-w-[112px] items-center gap-3 rounded-sm border px-4 py-3 text-left transition-all lg:min-w-0",
+                    "flex min-w-[104px] items-center gap-2.5 rounded-sm border px-3.5 py-2.5 text-left transition-all lg:min-w-0",
                     item.active
                       ? "border-[rgba(244,164,98,0.24)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]"
                       : "border-transparent text-slate-500 hover:border-[rgba(244,164,98,0.16)] hover:bg-[rgba(244,164,98,0.04)] hover:text-[var(--nlc-orange)]",
@@ -420,20 +441,20 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                   key={item.label}
                   type="button"
                 >
-                  <span className="text-base leading-none">{item.icon}</span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.24em]">{item.label}</span>
+                  <span className="text-[0.95rem] leading-none">{item.icon}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{item.label}</span>
                 </button>
               ))}
             </div>
 
             <div className="space-y-4 px-1 lg:px-0">
-              <div className="rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.05)] p-4">
+              <div className="rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.05)] p-3.5">
                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Citizen Hope</p>
                 <div className="h-1.5 overflow-hidden rounded-full bg-slate-800" />
                 <p className="mb-0 mt-2 text-[10px] text-[var(--nlc-muted)]">Telemetry unavailable</p>
               </div>
 
-              <div className="rounded-sm border border-red-900/30 bg-red-950/20 p-4">
+              <div className="rounded-sm border border-red-900/30 bg-red-950/20 p-3.5">
                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-400/70">Discontent</p>
                 <div className="h-1.5 overflow-hidden rounded-full bg-slate-800" />
                 <p className="mb-0 mt-2 text-[10px] text-red-200/70">Telemetry unavailable</p>
@@ -444,7 +465,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                   <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--nlc-orange)]">City Log</span>
                   <span className="text-[10px] text-[var(--nlc-muted)]">{city?.logs.length ?? 0}</span>
                 </div>
-                <div className="max-h-56 space-y-2 overflow-y-auto rounded-sm border border-[rgba(244,164,98,0.08)] bg-black/20 p-2 lg:max-h-[320px]">
+                <div className="max-h-52 space-y-2 overflow-y-auto rounded-sm border border-[rgba(244,164,98,0.08)] bg-black/20 p-2 lg:max-h-[280px]">
                   {city?.logs.length ? (
                     city.logs.slice(0, 8).map((entry) => (
                       <div className="flex gap-2" key={entry.id}>
@@ -467,28 +488,28 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
           </div>
 
           <div className="mt-4 hidden space-y-3 px-1 lg:block lg:px-0">
-            <div className="rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(255,255,255,0.03)] p-4">
+            <div className="rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(255,255,255,0.03)] p-3.5">
               <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">City Temperature</p>
               <p className="mt-2 text-lg text-[var(--nlc-orange)]">{city?.temperatureC ?? -20}°C</p>
             </div>
-            <div className="rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(255,255,255,0.03)] p-4">
+            <div className="rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(255,255,255,0.03)] p-3.5">
               <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Active Builders</p>
               <p className="mt-2 text-lg text-white">{formatNumber(activeBuildingCount)}</p>
             </div>
           </div>
         </aside>
 
-        <section className="relative min-h-[680px] flex-1 overflow-hidden bg-slate-950 lg:min-h-[calc(100vh-129px)]">
+        <section className="relative min-h-[600px] flex-1 overflow-hidden bg-slate-950 lg:min-h-0">
           <div className="absolute inset-0 bg-cover bg-center brightness-[0.36] saturate-[0.88]" style={{ backgroundImage: `url(${MAP_BACKGROUND_URL})` }} />
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(9,6,4,0.96)] via-transparent to-[rgba(9,6,4,0.45)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_20%,rgba(0,0,0,0.64)_100%)]" />
 
-          <div className="absolute left-6 top-6 z-10 rounded-sm border border-[rgba(244,164,98,0.16)] bg-[rgba(10,7,5,0.75)] px-4 py-3 backdrop-blur-sm">
-            <div className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">Great Frost</div>
-            <div className="mt-1 text-sm uppercase tracking-[0.18em] text-[var(--nlc-orange)]">District tactical view</div>
+          <div className="absolute left-5 top-5 z-10 rounded-sm border border-[rgba(244,164,98,0.16)] bg-[rgba(10,7,5,0.75)] px-3.5 py-2.5 backdrop-blur-sm">
+            <div className="text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Great Frost</div>
+            <div className="mt-1 text-[0.82rem] uppercase tracking-[0.16em] text-[var(--nlc-orange)]">District tactical view</div>
           </div>
 
-          <div className="absolute left-6 right-6 top-24 z-10 space-y-2">
+          <div className="absolute left-5 right-5 top-20 z-10 space-y-2">
             {isLoading ? <StatusNotice>Synchronizing city telemetry...</StatusNotice> : null}
             {isRefreshing ? <StatusNotice>Polling `/api/city` for fresh district state.</StatusNotice> : null}
             {!isLoading && !districts.length ? <StatusNotice>{districtTelemetryMessage}</StatusNotice> : null}
@@ -498,13 +519,13 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
 
           <div className="absolute inset-0 flex items-center justify-center">
             <button
-              className="absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-[rgba(255,157,0,0.4)] bg-[rgba(255,157,0,0.08)] shadow-[0_0_50px_rgba(255,157,0,0.18)] transition hover:bg-[rgba(255,157,0,0.14)] md:h-48 md:w-48"
+              className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-[rgba(255,157,0,0.4)] bg-[rgba(255,157,0,0.08)] shadow-[0_0_40px_rgba(255,157,0,0.18)] transition hover:bg-[rgba(255,157,0,0.14)] md:h-40 md:w-40"
               onClick={() => setActionMessage("Core Energy Hub is informational in M08.")}
               type="button"
             >
               <div className="absolute inset-3 rounded-full border border-[rgba(255,157,0,0.22)] bg-[rgba(255,157,0,0.1)] animate-pulse" />
               <div className="relative px-4 text-center text-[var(--nlc-amber)]">
-                <div className="text-4xl md:text-5xl">✦</div>
+                <div className="text-3xl md:text-4xl">✦</div>
                 <div className="mt-2 text-[10px] font-black uppercase tracking-[0.22em]">核心能量枢纽</div>
                 <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-[rgba(255,208,165,0.72)]">Core Energy Hub</div>
               </div>
@@ -524,7 +545,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
             ))}
           </div>
 
-          <div className="absolute right-10 top-10 z-10 hidden w-72 border border-[rgba(244,164,98,0.22)] bg-[rgba(0,0,0,0.6)] p-4 backdrop-blur-md xl:block">
+          <div className="absolute right-8 top-8 z-10 hidden w-64 border border-[rgba(244,164,98,0.22)] bg-[rgba(0,0,0,0.6)] p-3.5 backdrop-blur-md xl:block">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="m-0 text-sm font-black uppercase tracking-[0.18em] text-[var(--nlc-orange)]">District Overview</h3>
@@ -535,7 +556,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
             <div className="space-y-3">
               <div className="rounded border border-[rgba(244,164,98,0.12)] bg-[rgba(244,164,98,0.05)] p-3">
                 <p className="m-0 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--nlc-muted)]">Selected District</p>
-                <p className="mt-2 text-lg font-semibold text-slate-100">{activeDistrict?.label ?? "No district selected"}</p>
+                <p className="mt-2 text-base font-semibold text-slate-100">{activeDistrict?.label ?? "No district selected"}</p>
                 <p className="m-0 mt-1 text-xs text-[var(--nlc-muted)]">
                   {activeDistrictVisual?.englishLabel ?? "Move across the city map to inspect districts."}
                 </p>
@@ -570,19 +591,19 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
             </div>
           </div>
 
-          <div className="absolute bottom-6 left-1/2 z-10 flex w-[min(92%,1120px)] -translate-x-1/2 flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+          <div className="absolute bottom-4 left-1/2 z-10 flex w-[min(92%,920px)] -translate-x-1/2 flex-col gap-2.5 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex flex-1 items-center gap-2 rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(20,13,9,0.9)] p-1 backdrop-blur-md shadow-2xl">
               <button
                 aria-pressed="true"
-                className="flex flex-1 flex-col items-center justify-center border-b-2 border-[var(--nlc-orange)] bg-[rgba(244,164,98,0.1)] py-3 text-[var(--nlc-orange)] transition-colors"
+                className="flex flex-1 flex-col items-center justify-center border-b-2 border-[var(--nlc-orange)] bg-[rgba(244,164,98,0.1)] py-2.5 text-[var(--nlc-orange)] transition-colors"
                 type="button"
               >
-                <span className="text-lg leading-none">⌘</span>
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em]">Districts</span>
+                <span className="text-base leading-none">⌘</span>
+                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em]">Districts</span>
               </button>
               <button
                 className={joinClasses(
-                  "flex flex-1 flex-col items-center justify-center py-3 transition-colors",
+                  "flex flex-1 flex-col items-center justify-center py-2.5 transition-colors",
                   isAssigning
                     ? "cursor-not-allowed text-slate-500 opacity-60"
                     : "text-slate-500 hover:bg-[rgba(244,164,98,0.05)] hover:text-[var(--nlc-orange)]",
@@ -591,15 +612,15 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 onClick={() => void focus()}
                 type="button"
               >
-                <span className="text-lg leading-none">◎</span>
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em]">{isAssigning ? "Assigning" : "Focus"}</span>
+                <span className="text-base leading-none">◎</span>
+                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em]">{isAssigning ? "Assigning" : "Focus"}</span>
               </button>
             </div>
 
             <div className="flex flex-1 justify-end">
-              <div className="w-full max-w-[320px] border border-[rgba(244,164,98,0.3)] bg-[rgba(20,13,9,0.9)] p-3 backdrop-blur-md">
+              <div className="w-full max-w-[288px] border border-[rgba(244,164,98,0.3)] bg-[rgba(20,13,9,0.9)] p-3 backdrop-blur-md">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded border border-[rgba(244,164,98,0.4)] p-0.5">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-[rgba(244,164,98,0.4)] p-0.5">
                     <img alt="Administrator portrait" className="h-full w-full rounded-sm object-cover" src={ADMIN_AVATAR_URL} />
                   </div>
                   <div className="min-w-0 flex-1">
