@@ -172,11 +172,11 @@ async function fetchLiveSessionRedirect() {
 
   const payload = await readJson<{ session?: { id: string } | null; error?: { code?: string; message?: string } }>(response);
 
-  if (!response.ok || !payload?.session?.id) {
+  if (!response.ok) {
     throw new CityApiError(getApiErrorMessage(payload, "Failed to restore live session."), payload?.error?.code ?? null);
   }
 
-  return `/focus?sessionId=${payload.session.id}`;
+  return payload?.session?.id ? `/focus?sessionId=${payload.session.id}` : null;
 }
 
 export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null = null): CityHookState {
@@ -290,15 +290,26 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
 
     setActionMessage(null);
 
-    if (!user.autoAssign) {
-      setIsTaskModalOpen(true);
-      return;
-    }
-
     assigningRef.current = true;
     setIsAssigning(true);
 
     try {
+      const liveSessionRedirect = await fetchLiveSessionRedirect();
+
+      if (!mountedRef.current) {
+        return;
+      }
+
+      if (liveSessionRedirect) {
+        navigateTo(liveSessionRedirect);
+        return;
+      }
+
+      if (!user.autoAssign) {
+        setIsTaskModalOpen(true);
+        return;
+      }
+
       const payload = await assignNextTask();
 
       if (!mountedRef.current) {
@@ -319,8 +330,10 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
             return;
           }
 
-          navigateTo(redirectTo);
-          return;
+          if (redirectTo) {
+            navigateTo(redirectTo);
+            return;
+          }
         } catch (restoreError) {
           setActionMessage(restoreError instanceof Error ? restoreError.message : "Failed to restore live session.");
           return;

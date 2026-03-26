@@ -7,9 +7,9 @@
 
 import { NextResponse } from "next/server";
 
+import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFromRequest } from "@/lib/auth";
 import {
   handleRouteError,
-  requireCurrentUser,
   selectRows,
   toTaskJsonRecord,
   type CityResourcesRow,
@@ -60,9 +60,15 @@ function mapTemplateDto(template: TaskTemplateRow) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
+
   try {
-    await requireCurrentUser();
+    resolvedSession = await resolveSessionFromRequest(request);
+
+    if (!resolvedSession) {
+      return errorResponse(401, "UNAUTHORIZED", "Login required.");
+    }
 
     const [resourcesRows, templates, activeInstances, liveSessions] = await Promise.all([
       selectRows<CityResourcesRow>(
@@ -170,8 +176,12 @@ export async function GET() {
       }));
     });
 
-    return NextResponse.json({ tasks });
+    const response = NextResponse.json({ tasks });
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   } catch (error) {
-    return handleRouteError(error);
+    const response = handleRouteError(error);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   }
 }

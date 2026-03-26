@@ -16,6 +16,7 @@ export type AudioTrack = {
 
 export type AudioSnapshot = {
   ambientSoundId: AmbientSoundId;
+  isAmbientPlaying: boolean;
   isMusicPlaying: boolean;
   musicVolume: number;
   activeTrackIndex: number;
@@ -93,6 +94,7 @@ function formatInteractionMessage(context: AudioContext) {
 function createInitialSnapshot(): AudioSnapshot {
   return {
     ambientSoundId: "focus",
+    isAmbientPlaying: false,
     isMusicPlaying: false,
     musicVolume: DEFAULT_MUSIC_VOLUME,
     activeTrackIndex: 0,
@@ -156,6 +158,15 @@ export class AudioManager {
   };
 
   async setAmbientSound(id: AmbientSoundId) {
+    const previousId = this.activeAmbientPlaybackId;
+    const previousElement = previousId ? this.ambientElements[previousId] ?? null : null;
+
+    if (this.snapshot.ambientSoundId === id && this.snapshot.isAmbientPlaying && previousElement && !previousElement.paused) {
+      this.pauseAmbient(previousElement);
+      this.updateSnapshot({ lastError: null });
+      return;
+    }
+
     this.updateSnapshot({ ambientSoundId: id, lastError: null });
 
     if (!isBrowser()) {
@@ -164,8 +175,6 @@ export class AudioManager {
 
     const requestToken = ++this.ambientRequestToken;
     const nextElement = this.ensureAmbientElement(id);
-    const previousId = this.activeAmbientPlaybackId;
-    const previousElement = previousId ? this.ambientElements[previousId] ?? null : null;
 
     if (!nextElement) {
       this.handleAmbientFailure(previousElement, requestToken);
@@ -201,7 +210,7 @@ export class AudioManager {
     }
 
     this.activeAmbientPlaybackId = id;
-    this.updateSnapshot({ isAmbientReady: true, lastError: null });
+    this.updateSnapshot({ isAmbientReady: true, isAmbientPlaying: true, lastError: null });
     this.animateAmbientFade(nextElement, previousElement === nextElement ? null : previousElement);
   }
 
@@ -299,6 +308,22 @@ export class AudioManager {
     this.activeAmbientPlaybackId = null;
     this.listeners.clear();
     this.snapshot = createInitialSnapshot();
+  }
+
+  pauseAmbient(element?: HTMLAudioElement | null) {
+    this.cancelAmbientFade();
+    this.ambientRequestToken += 1;
+
+    const activeElement = element ?? (this.activeAmbientPlaybackId ? this.ambientElements[this.activeAmbientPlaybackId] ?? null : null);
+
+    if (activeElement) {
+      activeElement.pause();
+      activeElement.currentTime = 0;
+      activeElement.volume = DEFAULT_AMBIENT_VOLUME;
+    }
+
+    this.activeAmbientPlaybackId = null;
+    this.updateSnapshot({ isAmbientPlaying: false });
   }
 
   private async changeTrackBy(direction: 1 | -1) {
@@ -454,12 +479,9 @@ export class AudioManager {
     }
 
     if (previousElement) {
-      previousElement.pause();
-      previousElement.currentTime = 0;
-      previousElement.volume = DEFAULT_AMBIENT_VOLUME;
+      this.pauseAmbient(previousElement);
     }
 
-    this.activeAmbientPlaybackId = null;
     this.updateSnapshot({ isAmbientReady: false, lastError: formatUnavailableMessage("ambient") });
   }
 
@@ -477,7 +499,8 @@ export class AudioManager {
     }
 
     if (playResult.kind === "interaction_required") {
-      this.updateSnapshot({ isAmbientReady: true, lastError: playResult.message });
+      this.activeAmbientPlaybackId = null;
+      this.updateSnapshot({ isAmbientReady: true, isAmbientPlaying: false, lastError: playResult.message });
       return;
     }
 
@@ -554,7 +577,7 @@ export class AudioManager {
     }
 
     this.activeAmbientPlaybackId = null;
-    this.updateSnapshot({ isAmbientReady: false, lastError: formatUnavailableMessage("ambient") });
+    this.updateSnapshot({ isAmbientReady: false, isAmbientPlaying: false, lastError: formatUnavailableMessage("ambient") });
   };
 
   private onMusicError = () => {

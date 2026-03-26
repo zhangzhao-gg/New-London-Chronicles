@@ -5,7 +5,6 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 `app/CLAUDE.md` 与 `/CLAUDE.md`
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme inline {
@@ -15,8 +14,8 @@
   --color-nlc-border: var(--nlc-border);
   --color-nlc-panel: var(--nlc-panel);
   --color-nlc-muted: var(--nlc-muted);
-  --font-serif: "Newsreader", serif;
-  --font-sans: "Newsreader", serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-sans: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
 }
 
 :root {
@@ -48,7 +47,7 @@ body {
   min-height: 100vh;
   background: var(--nlc-gradient);
   color: var(--nlc-text);
-  font-family: "Newsreader", serif;
+  font-family: var(--font-serif);
   letter-spacing: 0.01em;
 }
 

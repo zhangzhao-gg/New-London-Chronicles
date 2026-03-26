@@ -28,9 +28,9 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `npm run start -- --port ${port}`,
+    command: `npm run start:young -- --port ${port}`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 });

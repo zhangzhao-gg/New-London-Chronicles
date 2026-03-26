@@ -6,7 +6,7 @@
  */
 
 import {
-  appendSupabaseSessionCookie,
+  appendSupabaseSessionCookieIfRefreshed,
   errorResponse,
   resolveSessionFromRequest,
   successResponse,
@@ -50,10 +50,7 @@ export async function PATCH(request: Request) {
     },
   });
 
-  if (resolvedSession.refreshed) {
-    appendSupabaseSessionCookie(response, resolvedSession.supabaseSession);
-  }
+  appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
 
   return response;
 }
-

@@ -45,6 +45,10 @@ type SessionRow = {
   started_at: string | null;
 };
 
+type LiveSessionRecord = {
+  id: string;
+};
+
 type AssignNextRpcResult = {
   sessionId: string;
   templateId: string;
@@ -463,6 +467,30 @@ async function getSessionRow(sessionId: string): Promise<SessionRow> {
   return fetchSingleRow<SessionRow>("sessions", query, "Session not found.");
 }
 
+async function getLatestLiveSession(userId: string): Promise<LiveSessionRecord | null> {
+  const response = await fetch(`${getSupabaseRestBaseUrl()}/sessions?${new URLSearchParams({
+    select: "id",
+    user_id: `eq.${userId}`,
+    status: "in.(pending,active)",
+    order: "created_at.desc",
+    limit: "1",
+  }).toString()}`, {
+    cache: "no-store",
+    headers: {
+      apikey: getServiceRoleKey(),
+      Authorization: `Bearer ${getServiceRoleKey()}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    await parseSupabaseError(response);
+  }
+
+  const rows = (await response.json()) as LiveSessionRecord[];
+  return Array.isArray(rows) ? (rows[0] ?? null) : null;
+}
+
 function normalizeResources(resources: Partial<HeartbeatResources> | null | undefined): HeartbeatResources {
   return {
     coal: Number(resources?.coal ?? 0),
@@ -523,6 +551,16 @@ export async function assignNextTask(userId: string) {
     },
     redirectTo: `/focus?sessionId=${payload.sessionId}`,
   };
+}
+
+export async function getLiveSessionRedirect(userId: string) {
+  const session = await getLatestLiveSession(userId);
+
+  if (!session?.id) {
+    throw new AppError("NOT_FOUND", "No live session found.");
+  }
+
+  return `/focus?sessionId=${session.id}`;
 }
 
 export async function startSession(userId: string, sessionId: string) {

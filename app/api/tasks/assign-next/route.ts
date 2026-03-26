@@ -7,15 +7,36 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { assignNextTask, requireAuthenticatedUser, toErrorResponse } from "@/lib/task-rpc";
+import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFromRequest } from "@/lib/auth";
+import { AppError, assignNextTask, getLiveSessionRedirect, toErrorResponse } from "@/lib/task-rpc";
 
 export async function POST(request: NextRequest) {
-  try {
-    const user = await requireAuthenticatedUser(request);
-    const result = await assignNextTask(user.userId);
+  let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
 
-    return NextResponse.json(result);
+  try {
+    resolvedSession = await resolveSessionFromRequest(request);
+
+    if (!resolvedSession) {
+      return errorResponse(401, "UNAUTHORIZED", "Login required.");
+    }
+
+    const result = await assignNextTask(resolvedSession.user.id);
+
+    const response = NextResponse.json(result);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   } catch (error) {
-    return toErrorResponse(error);
+    if (resolvedSession && error instanceof AppError && error.code === "CONFLICT") {
+      try {
+        const redirectTo = await getLiveSessionRedirect(resolvedSession.user.id);
+        const response = NextResponse.json({ redirectTo });
+        appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+        return response;
+      } catch {}
+    }
+
+    const response = toErrorResponse(error);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   }
 }
