@@ -46,19 +46,19 @@ const MUSIC_TRACKS: AudioTrack[] = [
     id: "white-furnace",
     title: "White Furnace Echo",
     fileLabel: "white_furnace_echo.wav",
-    src: "/audio/music/white-furnace-echo.wav",
+    src: "/audio/music/white-furnace-echo.mp3",
   },
   {
     id: "signal-lantern",
     title: "Signal Lantern Drift",
     fileLabel: "signal_lantern_drift.wav",
-    src: "/audio/music/signal-lantern-drift.wav",
+    src: "/audio/music/Piotr Musiał - Frostpunk Expansions (Original Soundtrack) - 01 - The Last Autumn Theme.mp3",
   },
   {
     id: "ashen-watch",
     title: "Ashen Watch Lullaby",
     fileLabel: "ashen_watch_lullaby.wav",
-    src: "/audio/music/ashen-watch-lullaby.wav",
+    src: "/audio/music/ashen-watch-lullaby.mp3",
   },
 ];
 
