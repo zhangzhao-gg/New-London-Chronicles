@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: Playwright `page`/browser context、Supabase 测试辅助工具、`PLAYWRIGHT_BASE_URL` 指向的本地 Next 服务
+ * [OUTPUT]: 覆盖登录、城市、focus、complete 与 cookie 刷新链路的端到端断言；必要时写入/清理测试数据
+ * [POS]: 位于 `tests/e2e/app.spec.ts`，作为 app 真实用户流的主 E2E spec
+ * [PROTOCOL]: 依赖真实浏览器、真实 HTTP 路由与 Supabase 测试环境；每个用例自行准备并清理用户名与任务状态
+ */
+
 import { expect, test } from "@playwright/test";
 
 import {
@@ -105,7 +112,7 @@ test.describe.serial("real user flows", () => {
     await login(page, username);
     await expect(page).toHaveURL(/\/city$/);
     await expect(page.getByRole("heading", { name: "New London" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Language placeholder" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Language" })).toBeVisible();
     await expect(page.getByText("EN US")).toHaveCount(0);
     await expect(page.getByText("ZH CN")).toHaveCount(0);
 
@@ -139,6 +146,13 @@ test.describe.serial("real user flows", () => {
           return nextCookie?.value ?? null;
         })
         .not.toContain("invalid-access-token");
+
+      await expect
+        .poll(async () => {
+          const nextCookie = await readSessionCookie(page);
+          return nextCookie?.expires ?? 0;
+        })
+        .toBeGreaterThan(Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7);
 
       await page.reload();
       await expect(page.getByRole("heading", { name: "New London" })).toBeVisible();

@@ -31,7 +31,7 @@
 
 ### 7. 按钮无障碍名不足导致测试和交互不稳
 
-- 已修复：Focus 主按钮、重来等关键操作补了稳定的可访问名称
+- 已修复：Focus 主按钮、重来等关键操作已补上可稳定访问的名称
 
 ### 8. City 底部 `FOCUS` 在已有 live session 时暴露冲突 JSON
 
@@ -60,6 +60,17 @@
 - 根因：浏览器之前会在 access token 到期时把整个 cookie 一起删掉，连 refresh token 也一并丢失
 - 当前结果：access token 失效后，后端仍可借助 refresh token 自动续期
 
+### 14. heartbeat 已成功返回但 `building_completed` 仍卡在 Focus
+
+- 已修复：heartbeat sender effect 不再因为 `isHeartbeatInFlight` 的状态切换立刻 cleanup 自己，成功返回后会继续写 `/api/session/end` 并跳转 `/complete`
+- 补充修复：本地持久化现在会记录已确认 heartbeat 数，恢复 session 时会补回未同步队列；build/work 轮询也加了并发保护
+- 当前结果：`build session completion enters complete with building_completed` E2E 已通过，`timer_completed` 与 `building_completed` 结算链都能稳定落到 `/complete`
+
+### 15. Playwright `webServer` 自动起服务误判 ready
+
+- 已修复：Playwright 配置从 `url` readiness probe 改成 `port`，并通过 `PLAYWRIGHT_REUSE_EXISTING_SERVER` 显式控制是否复用现有 server
+- 当前结果：不手动起 server 时，E2E 也能自动拉起 `next start` 并稳定执行
+
 ## 还没修复的问题
 
 ### 1. 失效或已结束的 `sessionId` 深链回退
@@ -72,7 +83,7 @@
 
 - 现象：结算后浏览器偶发请求 `/_next/static/chunks/app/complete/page.js` 返回 `404`
 - 当前判断：这是 Next dev / HMR / manifest 运行态异常，不是 `POST /api/session/end` 业务错误
-- 当前临时处理：停掉 dev、隔离 `.next-dev`、重新启动 `npm run dev:young`
+- 当前临时处理：停掉 dev、隔离 `.next-dev`、重新启动 `npm run dev:insecure`
 - 状态：未根治
 
 ### 3. `Duration` 的可编辑规则还没完全确认
@@ -81,19 +92,11 @@
 - 未确认部分：`pending` 或 `paused` 态下是否仍存在偶发不可编辑
 - 状态：待确认
 
-### 4. 倒计时到 `00:00` 后偶发不自动结算
-
-- 现象：Focus 倒计时显示已经到 `00:00`，但页面不会立刻停止，也不会立刻进入完成/结算
-- 初步判断：前端自动结算除了要求 `remainingSeconds === 0`，还额外依赖 heartbeat 队列已清空、请求不在飞行中、会话仍为 `active`
-- 可疑链路：`hooks/use-heartbeat.ts` 中自动结束判定被 `queuedHeartbeatCount`、`queuedHeartbeatCountRef.current`、`isHeartbeatInFlight`、`isPaused`、`remoteStatus` 多重条件共同门控
-- 风险：如果 heartbeat 请求卡住、失败后状态未完全归零，或本地队列与请求态不同步，界面可能停在 `0` 不继续结算
-- 状态：未修复，已定位前端可疑链路
-
-### 5. 双窗口下另一窗口仍可再次点击结算
+### 4. 双窗口下另一窗口仍可再次点击结算
 
 - 现象：同一个 focus session 同时开两个窗口时，一个窗口完成结算后，另一个窗口仍可能继续点一次“结算”
 - 初步判断：当前 `endingRef` 只是单窗口内存态，没有做跨窗口的 `ending/ended` 同步
-- 风险判断：按 [`docs/03-api-contracts.md`](/Users/zhangzhao/Desktop/worspace/fix-bug/docs/03-api-contracts.md) 约定，`POST /api/session/end` 应为幂等，且 `city_logs` 每个 session 只写一条；理论上不应重复计算或重复写日志
+- 风险判断：按 [`docs/03-api-contracts.md`](../docs/03-api-contracts.md) 约定，`POST /api/session/end` 应为幂等，且 `city_logs` 每个 session 只写一条；理论上不应重复计算或重复写日志
 - 仍未确认：虽然文档契约如此，但当前还没有针对“双窗口重复点击结算”做专项数据库或 E2E 验证，所以是否绝对不会重复计账，暂时不能下最终结论
 - 状态：未修复，是否重复计账待验证
 
@@ -113,10 +116,9 @@
 ## 已完成的验证
 
 - `npx tsc --noEmit` 通过
-- `npm run build` 通过
-- 关键定向 E2E 通过：
-  - 登录后 access token 失效仍可自动续期
-  - 关闭 Auto assign 后，已有 live session 时底部 `FOCUS` 仍优先恢复
+- `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run --silent build` 通过
+- `PLAYWRIGHT_START_COMMAND='npm run start:insecure' NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test tests/e2e/app.spec.ts --reporter=line` 通过
+- 全量 `tests/e2e/app.spec.ts` 结果：`10 passed`
 
 ## 说明
 

@@ -384,7 +384,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 <SettingsGlyph />
               </button>
               <button
-                aria-label="Language placeholder"
+                aria-label="Language"
                 className="relative rounded p-2 text-slate-400 transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
                 type="button"
               >

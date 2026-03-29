@@ -334,6 +334,9 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
             navigateTo(redirectTo);
             return;
           }
+
+          setActionMessage("检测到已有进行中的工作，但未能恢复当前 session。请刷新页面重试。");
+          return;
         } catch (restoreError) {
           setActionMessage(restoreError instanceof Error ? restoreError.message : "Failed to restore live session.");
           return;

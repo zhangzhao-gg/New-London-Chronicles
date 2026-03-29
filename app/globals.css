@@ -14,8 +14,8 @@
   --color-nlc-border: var(--nlc-border);
   --color-nlc-panel: var(--nlc-panel);
   --color-nlc-muted: var(--nlc-muted);
-  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --font-sans: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", georgia, serif;
+  --font-sans: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", "Arial", sans-serif;
 }
 
 :root {

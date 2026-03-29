@@ -20,37 +20,40 @@ export async function PATCH(request: Request) {
     return errorResponse(401, "UNAUTHORIZED", "Login required.");
   }
 
+  function finalizeResponse(response: ReturnType<typeof errorResponse> | ReturnType<typeof successResponse>) {
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
+  }
+
   let payload: unknown;
 
   try {
     payload = await request.json();
   } catch {
-    return errorResponse(400, "VALIDATION_ERROR", "Invalid settings payload.");
+    return finalizeResponse(errorResponse(400, "VALIDATION_ERROR", "Invalid settings payload."));
   }
 
   const autoAssign = (payload as { autoAssign?: unknown })?.autoAssign;
 
   if (typeof autoAssign !== "boolean") {
-    return errorResponse(400, "VALIDATION_ERROR", "autoAssign must be boolean.");
+    return finalizeResponse(errorResponse(400, "VALIDATION_ERROR", "autoAssign must be boolean."));
   }
 
   const updatedUser = await updateUserAutoAssign(resolvedSession.user.id, autoAssign);
 
   if (!updatedUser) {
-    return errorResponse(500, "CONFLICT", "Failed to update settings.");
+    return finalizeResponse(errorResponse(500, "CONFLICT", "Failed to update settings."));
   }
 
-  const response = successResponse({
-    user: {
-      id: updatedUser.id,
-      username: updatedUser.username,
-      autoAssign: updatedUser.auto_assign,
-      hungerStatus: updatedUser.hunger_status,
-      createdAt: updatedUser.created_at,
-    },
-  });
-
-  appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
-
-  return response;
+  return finalizeResponse(
+    successResponse({
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        autoAssign: updatedUser.auto_assign,
+        hungerStatus: updatedUser.hunger_status,
+        createdAt: updatedUser.created_at,
+      },
+    }),
+  );
 }

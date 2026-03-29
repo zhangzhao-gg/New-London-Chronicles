@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
         const response = NextResponse.json({ redirectTo });
         appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
         return response;
-      } catch {}
+      } catch (redirectError) {
+        console.error("[assign-next] Failed to resolve live session redirect after conflict.", redirectError);
+      }
     }
 
     const response = toErrorResponse(error);

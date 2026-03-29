@@ -49,6 +49,7 @@ type PersistedFocusState = {
   remainingSeconds: number;
   isPaused: boolean;
   countdownEndsAtMs: number | null;
+  acknowledgedHeartbeatCount?: number;
 };
 
 type HeartbeatPayload = {
@@ -97,6 +98,10 @@ function normalizePositiveWholeNumber(value: number) {
 
 function normalizeRemainingSeconds(value: number) {
   return Math.max(0, Math.round(value));
+}
+
+function normalizeHeartbeatCount(value: number) {
+  return Math.max(0, Math.floor(value));
 }
 
 function deriveCountdownEndsAtMs(remainingSeconds: number) {
@@ -154,6 +159,10 @@ function readPersistedState(sessionId: string): PersistedFocusState | null {
           : typeof parsed.countdownEndsAtMs === "number"
             ? Math.round(parsed.countdownEndsAtMs)
             : deriveCountdownEndsAtMs(parsed.remainingSeconds),
+      acknowledgedHeartbeatCount:
+        typeof parsed.acknowledgedHeartbeatCount === "number" && Number.isFinite(parsed.acknowledgedHeartbeatCount)
+          ? normalizeHeartbeatCount(parsed.acknowledgedHeartbeatCount)
+          : undefined,
     };
   } catch {
     return null;
@@ -304,6 +313,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
   const mountedRef = useRef(true);
   const endingRef = useRef(false);
   const cycleHeartbeatCountRef = useRef(0);
+  const isTaskPollInFlightRef = useRef(false);
   const queuedHeartbeatCountRef = useRef(0);
 
   useEffect(() => {
@@ -335,6 +345,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       setSelectedMinutesState(null);
       setStatusMessage(null);
       endingRef.current = false;
+      isTaskPollInFlightRef.current = false;
       cycleHeartbeatCountRef.current = 0;
       queuedHeartbeatCountRef.current = 0;
       return;
@@ -350,6 +361,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     setQueuedHeartbeatCount(0);
     setRemoteStatus(nextRemoteStatus);
     endingRef.current = false;
+    isTaskPollInFlightRef.current = false;
     queuedHeartbeatCountRef.current = 0;
 
     if (persistedState) {
@@ -360,18 +372,34 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
         remainingMs == null
           ? persistedState.remainingSeconds
           : getRemainingSecondsFromMs(remainingMs);
-      const nextCycleHeartbeatCount =
+      const completedHeartbeatCount =
         remainingMs == null
           ? deriveCycleHeartbeatCount(persistedState.selectedMinutes, nextRemainingSeconds)
           : deriveCycleHeartbeatCountFromRemainingMs(persistedState.selectedMinutes, remainingMs);
+      const savedHeartbeatCount = deriveCycleHeartbeatCount(persistedState.selectedMinutes, persistedState.remainingSeconds);
+      const acknowledgedHeartbeatCount = Math.min(
+        completedHeartbeatCount,
+        normalizeHeartbeatCount(persistedState.acknowledgedHeartbeatCount ?? savedHeartbeatCount),
+      );
+      const nextQueuedHeartbeatCount = Math.max(0, completedHeartbeatCount - acknowledgedHeartbeatCount);
 
-      cycleHeartbeatCountRef.current = nextCycleHeartbeatCount;
+      cycleHeartbeatCountRef.current = acknowledgedHeartbeatCount;
+      queuedHeartbeatCountRef.current = nextQueuedHeartbeatCount;
       setCountdownEndsAtMs(restoredCountdownEndsAtMs);
-      setCycleHeartbeatCount(nextCycleHeartbeatCount);
+      setCycleHeartbeatCount(acknowledgedHeartbeatCount);
+      setQueuedHeartbeatCount(nextQueuedHeartbeatCount);
       setSelectedMinutesState(persistedState.selectedMinutes);
       setRemainingSeconds(nextRemainingSeconds);
       setIsPaused(persistedState.isPaused);
-      setStatusMessage(persistedState.isPaused ? "已恢复暂停中的本地倒计时。" : "已恢复进行中的本地倒计时。");
+      setStatusMessage(
+        persistedState.isPaused
+          ? nextQueuedHeartbeatCount > 0
+            ? "已恢复暂停中的本地倒计时，待同步 heartbeat 已保留。"
+            : "已恢复暂停中的本地倒计时。"
+          : nextQueuedHeartbeatCount > 0
+            ? "已恢复进行中的本地倒计时，并补回待同步 heartbeat。"
+            : "已恢复进行中的本地倒计时。",
+      );
       return;
     }
 
@@ -407,8 +435,9 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       remainingSeconds,
       isPaused,
       countdownEndsAtMs: isPaused ? null : countdownEndsAtMs,
+      acknowledgedHeartbeatCount: cycleHeartbeatCount,
     });
-  }, [countdownEndsAtMs, isPaused, remainingSeconds, selectedMinutes, session]);
+  }, [countdownEndsAtMs, cycleHeartbeatCount, isPaused, remainingSeconds, selectedMinutes, session]);
 
   useEffect(() => {
     if (
@@ -487,6 +516,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     if (
       !session ||
       remoteStatus !== "active" ||
+      isPaused ||
       queuedHeartbeatCount <= 0 ||
       isHeartbeatInFlight ||
       endingRef.current
@@ -526,7 +556,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
         setCountdownEndsAtMs(null);
         setIsPaused(true);
         setErrorMessage(error instanceof Error ? error.message : "Failed to sync heartbeat.");
-        setStatusMessage("heartbeat 同步失败，已暂停本地倒计时。");
+        setStatusMessage("heartbeat 同步失败，已暂停本地倒计时；恢复后会继续补发。");
       } finally {
         if (!cancelled && mountedRef.current) {
           setIsHeartbeatInFlight(false);
@@ -539,7 +569,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     return () => {
       cancelled = true;
     };
-  }, [isHeartbeatInFlight, queuedHeartbeatCount, remoteStatus, session]);
+  }, [isPaused, queuedHeartbeatCount, remoteStatus, session]);
 
   useEffect(() => {
     if (
@@ -572,6 +602,12 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     let cancelled = false;
 
     const runPoll = async () => {
+      if (isTaskPollInFlightRef.current) {
+        return;
+      }
+
+      isTaskPollInFlightRef.current = true;
+
       try {
         const isInstanceStillActive = await pollTaskInstance(session);
 
@@ -587,6 +623,8 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
         if (!cancelled && mountedRef.current) {
           setStatusMessage("建造实例轮询暂时失败，稍后重试。");
         }
+      } finally {
+        isTaskPollInFlightRef.current = false;
       }
     };
 

@@ -4,12 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:young": "NODE_TLS_REJECT_UNAUTHORIZED=0 next dev",
+    "dev:insecure": "NODE_TLS_REJECT_UNAUTHORIZED=0 next dev",
+    "dev:young": "npm run dev:insecure",
     "build": "next build",
     "start": "next start",
-    "start:young": "NODE_TLS_REJECT_UNAUTHORIZED=0 next start",
+    "start:insecure": "NODE_TLS_REJECT_UNAUTHORIZED=0 next start",
+    "start:young": "npm run start:insecure",
     "typecheck": "npm run --silent build && tsc --noEmit",
-    "test:e2e": "NODE_TLS_REJECT_UNAUTHORIZED=0 npm run --silent build && NODE_TLS_REJECT_UNAUTHORIZED=0 playwright test"
+    "test:e2e": "npm run --silent build && playwright test",
+    "test:e2e:insecure": "PLAYWRIGHT_START_COMMAND='npm run start:insecure' NODE_TLS_REJECT_UNAUTHORIZED=0 npm run --silent build && PLAYWRIGHT_START_COMMAND='npm run start:insecure' NODE_TLS_REJECT_UNAUTHORIZED=0 playwright test"
   },
   "ts-node": {
     "compilerOptions": {
