@@ -7,7 +7,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { handleRouteError, mapLogDto, requireCurrentUser, selectRows, type CityLogRow } from "@/lib/supabase-server";
+import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFromRequest } from "@/lib/auth";
+import { handleRouteError, mapLogDto, selectRows, type CityLogRow } from "@/lib/supabase-server";
 
 function parseLimit(request: NextRequest): number {
   const rawLimit = request.nextUrl.searchParams.get("limit");
@@ -21,8 +22,14 @@ function parseLimit(request: NextRequest): number {
 }
 
 export async function GET(request: NextRequest) {
+  let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
+
   try {
-    await requireCurrentUser();
+    resolvedSession = await resolveSessionFromRequest(request);
+
+    if (!resolvedSession) {
+      return errorResponse(401, "UNAUTHORIZED", "Login required.");
+    }
 
     const limit = parseLimit(request);
     const logs = await selectRows<CityLogRow>(
@@ -34,11 +41,14 @@ export async function GET(request: NextRequest) {
       },
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       logs: logs.map(mapLogDto),
     });
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   } catch (error) {
-    return handleRouteError(error);
+    const response = handleRouteError(error);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   }
 }
-

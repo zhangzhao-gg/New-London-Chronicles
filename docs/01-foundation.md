@@ -144,9 +144,10 @@
 
 本地调试补充：
 
-- 若开发机存在代理证书链问题，允许使用 `npm run dev:young`
-- `dev:young` 等价于 `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run dev`
+- 若开发机存在代理证书链问题，允许使用 `npm run dev:insecure`
+- `dev:insecure` 等价于 `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run dev`
 - 此模式仅用于本地排障，不进入生产部署链路
+- `dev:young` 保留为兼容别名，但不再作为首选命名
 
 ## 5. 部署架构
 

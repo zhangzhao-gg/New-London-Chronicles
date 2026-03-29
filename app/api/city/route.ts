@@ -7,10 +7,10 @@
 
 import { NextResponse } from "next/server";
 
+import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFromRequest } from "@/lib/auth";
 import {
   handleRouteError,
   mapLogDto,
-  requireCurrentUser,
   selectRows,
   toTaskJsonRecord,
   touchLastSeen,
@@ -82,9 +82,15 @@ function getDistrictStatus(
   return "无进行中任务";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
+
   try {
-    const currentUser = await requireCurrentUser();
+    resolvedSession = await resolveSessionFromRequest(request);
+
+    if (!resolvedSession) {
+      return errorResponse(401, "UNAUTHORIZED", "Login required.");
+    }
 
     const [resourcesRows, templates, activeInstances, liveSessions, activeSessions, buildings, logs] = await Promise.all([
       selectRows<CityResourcesRow>(
@@ -189,9 +195,9 @@ export async function GET() {
       workingCount: workingCountByDistrict.get(district) ?? 0,
     }));
 
-    await touchLastSeen(currentUser.appUserId);
+    await touchLastSeen(resolvedSession.user.id);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       resources: {
         coal: resources.coal,
         wood: resources.wood,
@@ -215,8 +221,13 @@ export async function GET() {
       logs: logs.map(mapLogDto),
       temperatureC: -20,
     });
+
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+
+    return response;
   } catch (error) {
-    return handleRouteError(error);
+    const response = handleRouteError(error);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   }
 }
-

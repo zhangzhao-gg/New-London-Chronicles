@@ -160,24 +160,6 @@ async function joinTask(task: TaskListItem) {
   return payload;
 }
 
-async function fetchLiveSessionRedirect() {
-  const response = await fetch("/api/session/current?any=1", {
-    method: "GET",
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  const payload = await readJson<{ session?: { id: string } | null; error?: { code?: string; message?: string } }>(response);
-
-  if (!response.ok || !payload?.session?.id) {
-    throw new DistrictModalApiError(getApiErrorMessage(payload, "Failed to restore live session."), payload?.error?.code ?? null);
-  }
-
-  return `/focus?sessionId=${payload.session.id}`;
-}
-
 function formatCostSummary(costs: Record<string, number>) {
   const entries = Object.entries(costs);
 
@@ -285,15 +267,8 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
       navigateTo(payload.redirectTo ?? `/focus?sessionId=${payload.sessionId}`);
     } catch (error) {
       if (error instanceof DistrictModalApiError && error.code === "CONFLICT") {
-        try {
-          const redirectTo = await fetchLiveSessionRedirect();
-          onClose();
-          navigateTo(redirectTo);
-          return;
-        } catch (restoreError) {
-          setErrorMessage(restoreError instanceof Error ? restoreError.message : "Failed to restore live session.");
-          return;
-        }
+        setErrorMessage("你已经有工作了，请先完成当前专注任务。");
+        return;
       }
 
       setErrorMessage(error instanceof Error ? error.message : "Failed to join task.");

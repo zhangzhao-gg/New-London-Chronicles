@@ -75,6 +75,7 @@ type ErrorCode =
 const USERNAME_PATTERN = /^[\p{Script=Han}A-Za-z0-9 _-]+$/u;
 
 export const SUPABASE_SESSION_COOKIE_NAME = "nlc-sb-anon-session";
+const SUPABASE_SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -516,8 +517,19 @@ export function appendSupabaseSessionCookie(response: NextResponse, session: Sup
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires: new Date(session.expires_at * 1000),
+    maxAge: SUPABASE_SESSION_COOKIE_MAX_AGE_SECONDS,
   });
+}
+
+export function appendSupabaseSessionCookieIfRefreshed(
+  response: NextResponse,
+  session: { refreshed: boolean; supabaseSession: SupabaseSession } | null | undefined,
+): void {
+  if (!session?.refreshed) {
+    return;
+  }
+
+  appendSupabaseSessionCookie(response, session.supabaseSession);
 }
 
 export function clearSupabaseSessionCookie(response: NextResponse): void {

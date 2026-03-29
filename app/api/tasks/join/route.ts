@@ -7,31 +7,42 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFromRequest } from "@/lib/auth";
 import {
   ensureObjectBody,
   joinTask,
   optionalUuid,
   readRequestJson,
-  requireAuthenticatedUser,
   requireUuid,
   toErrorResponse,
 } from "@/lib/task-rpc";
 
 export async function POST(request: NextRequest) {
+  let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
+
   try {
-    const user = await requireAuthenticatedUser(request);
+    resolvedSession = await resolveSessionFromRequest(request);
+
+    if (!resolvedSession) {
+      return errorResponse(401, "UNAUTHORIZED", "Login required.");
+    }
+
     const body = await readRequestJson<unknown>(request);
 
     ensureObjectBody(body);
 
     const result = await joinTask({
-      userId: user.userId,
+      userId: resolvedSession.user.id,
       templateId: requireUuid(body.templateId, "templateId"),
       instanceId: optionalUuid(body.instanceId, "instanceId"),
     });
 
-    return NextResponse.json(result);
+    const response = NextResponse.json(result);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   } catch (error) {
-    return toErrorResponse(error);
+    const response = toErrorResponse(error);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   }
 }

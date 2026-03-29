@@ -7,11 +7,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFromRequest } from "@/lib/auth";
 import {
   handleRouteError,
   isSessionTimedOut,
   notFound,
-  requireCurrentUser,
   selectRows,
   timeoutSession,
   type SessionRow,
@@ -35,8 +35,15 @@ function mapSessionDto(session: SessionRow, template: TaskTemplateRow) {
 }
 
 export async function GET(request: NextRequest) {
+  let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
+
   try {
-    const currentUser = await requireCurrentUser();
+    resolvedSession = await resolveSessionFromRequest(request);
+
+    if (!resolvedSession) {
+      return errorResponse(401, "UNAUTHORIZED", "Login required.");
+    }
+
     const requestedSessionId = request.nextUrl.searchParams.get("sessionId");
     const includeAnyLiveSession = request.nextUrl.searchParams.get("any") === "1";
 
@@ -45,7 +52,7 @@ export async function GET(request: NextRequest) {
         "sessions",
         "id,user_id,task_template_id,task_instance_id,created_at,started_at,last_heartbeat_at,ended_at,status,end_reason",
         {
-          user_id: `eq.${currentUser.appUserId}`,
+          user_id: `eq.${resolvedSession.user.id}`,
           status: "in.(pending,active)",
           order: "created_at.desc",
         },
@@ -73,12 +80,16 @@ export async function GET(request: NextRequest) {
         notFound("Session not found.");
       }
 
-      return NextResponse.json({ session: null });
+      const response = NextResponse.json({ session: null });
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
     }
 
     if (isSessionTimedOut(matchedSession)) {
-      await timeoutSession(matchedSession.id, currentUser.appUserId);
-      return NextResponse.json({ session: null });
+      await timeoutSession(matchedSession.id, resolvedSession.user.id);
+      const response = NextResponse.json({ session: null });
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
     }
 
     const template = templateById.get(matchedSession.task_template_id);
@@ -88,17 +99,25 @@ export async function GET(request: NextRequest) {
         notFound("Session not found.");
       }
 
-      return NextResponse.json({ session: null });
+      const response = NextResponse.json({ session: null });
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
     }
 
     if (!requestedSessionId && !includeAnyLiveSession && template.type !== "build" && template.type !== "work") {
-      return NextResponse.json({ session: null });
+      const response = NextResponse.json({ session: null });
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       session: mapSessionDto(matchedSession, template),
     });
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   } catch (error) {
-    return handleRouteError(error);
+    const response = handleRouteError(error);
+    appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+    return response;
   }
 }

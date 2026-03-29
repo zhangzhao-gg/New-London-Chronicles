@@ -61,7 +61,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Industrial Resource Zone",
     icon: "⚙",
     layout: "corner-left",
-    positionClassName: "left-[14%] top-[18%] h-24 w-44 md:left-[28%] md:top-[20%] md:h-32 md:w-56",
+    positionClassName: "left-[18%] top-[22%] h-24 w-44 md:left-[28%] md:top-[20%] md:h-30 md:w-52",
     surfaceClassName: "border-slate-500/45 bg-slate-500/8 text-slate-200 hover:bg-slate-500/12",
     accentClassName: "text-slate-400/85",
     tooltipSide: "bottom",
@@ -71,7 +71,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Residential Settlement",
     icon: "⌂",
     layout: "corner-right",
-    positionClassName: "bottom-[12%] right-[10%] h-32 w-52 md:bottom-[18%] md:right-[18%] md:h-40 md:w-64",
+    positionClassName: "bottom-[20%] right-[14%] h-32 w-52 md:bottom-[20%] md:right-[22%] md:h-36 md:w-60",
     surfaceClassName:
       "border-[rgba(244,164,98,0.34)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.14)]",
     accentClassName: "text-[rgba(255,193,137,0.82)]",
@@ -82,7 +82,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Emergency Medical Post",
     icon: "✚",
     layout: "center",
-    positionClassName: "right-[2%] top-[40%] h-28 w-28 md:right-[6%] md:top-[42%] md:h-40 md:w-40",
+    positionClassName: "right-[4%] top-[41%] h-28 w-28 md:right-[10%] md:top-[41%] md:h-34 md:w-34",
     surfaceClassName: "border-blue-400/40 bg-blue-500/8 text-blue-200 hover:bg-blue-500/14",
     accentClassName: "text-blue-300/76",
     tooltipSide: "left",
@@ -92,7 +92,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Food Production",
     icon: "❈",
     layout: "center",
-    positionClassName: "bottom-[34%] left-[4%] h-20 w-32 md:bottom-[40%] md:left-[8%] md:h-24 md:w-40",
+    positionClassName: "bottom-[38%] left-[6%] h-20 w-32 md:bottom-[38%] md:left-[10%] md:h-22 md:w-36",
     surfaceClassName: "border-green-800/35 bg-green-800/8 text-green-200 hover:bg-green-800/14",
     accentClassName: "text-green-400/76",
     tooltipSide: "top",
@@ -102,7 +102,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Outpost",
     icon: "◈",
     layout: "center",
-    positionClassName: "right-[24%] top-[8%] h-16 w-28 md:right-[34%] md:top-[10%] md:h-20 md:w-32",
+    positionClassName: "right-[26%] top-[10%] h-16 w-28 md:right-[36%] md:top-[11%] md:h-18 md:w-30",
     surfaceClassName: "border-slate-700/45 bg-slate-700/8 text-slate-300 hover:bg-slate-700/14",
     accentClassName: "text-slate-400/80",
     tooltipSide: "bottom",
@@ -115,6 +115,26 @@ const navItems = [
   { label: "Personnel", icon: "◫", active: false },
   { label: "Alerts", icon: "⚠", active: false },
 ] as const;
+
+function SettingsGlyph() {
+  return (
+    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M10 3h4l.7 2.3 2.2.9 2.1-1.1 2 3.5-1.8 1.5.2 2.4 1.8 1.5-2 3.5-2.1-1.1-2.2.9L14 21h-4l-.7-2.3-2.2-.9-2.1 1.1-2-3.5 1.8-1.5-.2-2.4L2.8 9.1l2-3.5 2.1 1.1 2.2-.9L10 3Z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  );
+}
+
+function GlobeGlyph() {
+  return (
+    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.8 12h16.4" />
+      <path d="M12 3.5c2.4 2.2 3.8 5.2 3.8 8.5S14.4 18.3 12 20.5" />
+      <path d="M12 3.5C9.6 5.7 8.2 8.7 8.2 12s1.4 6.3 3.8 8.5" />
+    </svg>
+  );
+}
 
 
 function joinClasses(...values: Array<string | false | null | undefined>) {
@@ -278,7 +298,6 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     language,
     setActionMessage,
     setIsTaskModalOpen,
-    setLanguage,
     toggleAutoAssign,
     user,
   } = useCity(initialUser, initialCity);
@@ -288,7 +307,6 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
 
   const resources = useMemo(() => resourceRows(city), [city]);
   const districts = city?.districts ?? [];
-  const languageOptions = city?.languageOptions ?? ["zh-CN", "en-US"];
   const districtTelemetryMessage = city ? "District telemetry unavailable" : "Synchronizing city telemetry";
 
   useEffect(() => {
@@ -325,15 +343,14 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     [activeDistrictKey, districts],
   );
   const activeDistrictVisual = activeDistrict ? districtVisuals[activeDistrict.district] : null;
-  const activeBuildingCount = city?.buildings.length ?? 0;
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[radial-gradient(circle_at_top,#342015_0%,#140d09_46%,#090604_100%)] text-[var(--nlc-text)] lg:h-screen lg:overflow-hidden">
-      <header className="sticky top-0 z-50 border-b-2 border-[rgba(244,164,98,0.22)] bg-[rgba(20,13,9,0.94)] px-4 py-2 backdrop-blur-md sm:px-6">
+      <header className="sticky top-0 z-50 border-b-2 border-[rgba(244,164,98,0.22)] bg-[rgba(20,13,9,0.94)] px-4 py-1.5 backdrop-blur-md sm:px-6">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="rounded border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.08)] p-2 text-2xl text-[var(--nlc-orange)]">
+              <div className="rounded border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.08)] p-2 text-xl text-[var(--nlc-orange)]">
                 ⚙
               </div>
               <div>
@@ -360,27 +377,20 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1 rounded border border-[rgba(244,164,98,0.12)] bg-black/35 p-1">
               <button
-                className="rounded px-2 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400 transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
-                onClick={() => setActionMessage(null)}
+                aria-label="Settings"
+                className="rounded p-2 text-slate-400 transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
                 type="button"
               >
-                Clear
+                <SettingsGlyph />
               </button>
-              {languageOptions.map((option) => (
-                <button
-                  className={joinClasses(
-                    "rounded px-2 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition-colors",
-                    language === option
-                      ? "bg-[rgba(244,164,98,0.12)] text-[var(--nlc-orange)]"
-                      : "text-slate-400 hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]",
-                  )}
-                  key={option}
-                  onClick={() => setLanguage(option)}
-                  type="button"
-                >
-                  {option.replace("-", " ")}
-                </button>
-              ))}
+              <button
+                aria-label="Language"
+                className="relative rounded p-2 text-slate-400 transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
+                type="button"
+              >
+                <GlobeGlyph />
+                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[var(--nlc-orange)]" />
+              </button>
             </div>
 
             <div className="h-10 w-10 overflow-hidden rounded border-2 border-[rgba(244,164,98,0.4)] p-0.5">
@@ -427,13 +437,13 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
       </div>
 
       <main className="flex min-h-0 flex-1 flex-col lg:min-h-0 lg:flex-row lg:overflow-hidden">
-        <aside className="border-b border-[rgba(244,164,98,0.14)] bg-[rgba(12,8,5,0.9)] px-3 py-3 lg:flex lg:min-h-0 lg:w-56 lg:flex-col lg:justify-between lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.14)]">
+        <aside className="border-b border-[rgba(244,164,98,0.14)] bg-[rgba(12,8,5,0.9)] px-3 py-3 lg:flex lg:min-h-0 lg:w-72 lg:flex-col lg:justify-between lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.14)]">
           <div>
             <div className="mb-4 flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
               {navItems.map((item) => (
                 <button
                   className={joinClasses(
-                    "flex min-w-[104px] items-center gap-2.5 rounded-sm border px-3.5 py-2.5 text-left transition-all lg:min-w-0",
+                    "flex min-w-[112px] items-center gap-2.5 rounded-sm border px-4 py-3 text-left transition-all lg:min-w-0",
                     item.active
                       ? "border-[rgba(244,164,98,0.24)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]"
                       : "border-transparent text-slate-500 hover:border-[rgba(244,164,98,0.16)] hover:bg-[rgba(244,164,98,0.04)] hover:text-[var(--nlc-orange)]",
@@ -486,20 +496,9 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
               </div>
             </div>
           </div>
-
-          <div className="mt-4 hidden space-y-3 px-1 lg:block lg:px-0">
-            <div className="rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(255,255,255,0.03)] p-3.5">
-              <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">City Temperature</p>
-              <p className="mt-2 text-lg text-[var(--nlc-orange)]">{city?.temperatureC ?? -20}°C</p>
-            </div>
-            <div className="rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(255,255,255,0.03)] p-3.5">
-              <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Active Builders</p>
-              <p className="mt-2 text-lg text-white">{formatNumber(activeBuildingCount)}</p>
-            </div>
-          </div>
         </aside>
 
-        <section className="relative min-h-[600px] flex-1 overflow-hidden bg-slate-950 lg:min-h-0">
+        <section className="relative min-h-[560px] flex-1 overflow-hidden bg-slate-950 lg:min-h-0">
           <div className="absolute inset-0 bg-cover bg-center brightness-[0.36] saturate-[0.88]" style={{ backgroundImage: `url(${MAP_BACKGROUND_URL})` }} />
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(9,6,4,0.96)] via-transparent to-[rgba(9,6,4,0.45)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_20%,rgba(0,0,0,0.64)_100%)]" />
@@ -591,7 +590,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
             </div>
           </div>
 
-          <div className="absolute bottom-4 left-1/2 z-10 flex w-[min(92%,920px)] -translate-x-1/2 flex-col gap-2.5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="absolute bottom-4 left-1/2 z-10 flex w-[min(84%,980px)] -translate-x-1/2 flex-col gap-2.5 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex flex-1 items-center gap-2 rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(20,13,9,0.9)] p-1 backdrop-blur-md shadow-2xl">
               <button
                 aria-pressed="true"

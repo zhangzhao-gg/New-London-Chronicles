@@ -1,5 +1,5 @@
 /**
- * [INPUT]: `PLAYWRIGHT_BASE_URL`、`PORT`、Playwright CLI 参数、项目 `npm run start`
+ * [INPUT]: `PLAYWRIGHT_BASE_URL`、`PLAYWRIGHT_START_COMMAND`、`PORT`、Playwright CLI 参数、项目 `npm run start`
  * [OUTPUT]: Chromium headless E2E 运行配置，控制测试超时、截图、trace 与本地 webServer 启动
  * [POS]: 位于仓库根目录，作为 `tests/e2e/` 的统一 Playwright 配置入口
  * [PROTOCOL]: 依赖 Next.js 生产服务、Playwright 浏览器运行时与 CI/本地命令行环境
@@ -9,6 +9,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = Number(process.env.PORT ?? "3001");
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
+const startCommand = process.env.PLAYWRIGHT_START_COMMAND ?? "npm run start";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -28,9 +29,9 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `npm run start -- --port ${port}`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    command: `${startCommand} -- --port ${port}`,
+    port,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1",
     timeout: 120_000,
   },
 });

@@ -48,6 +48,8 @@ type PersistedFocusState = {
   selectedMinutes: number;
   remainingSeconds: number;
   isPaused: boolean;
+  countdownEndsAtMs: number | null;
+  acknowledgedHeartbeatCount?: number;
 };
 
 type HeartbeatPayload = {
@@ -83,10 +85,39 @@ type UseHeartbeatResult = {
 
 const HEARTBEAT_SECONDS = 10 * 60;
 const TASK_POLL_INTERVAL_MS = 30_000;
+const LOCAL_TICK_INTERVAL_MS = 250;
 const DEFAULT_PENDING_FOCUS_MINUTES = 25;
 
 function getStorageKey(sessionId: string) {
   return `nlc:focus-state:${sessionId}`;
+}
+
+function normalizePositiveWholeNumber(value: number) {
+  return Math.max(1, Math.round(value));
+}
+
+function normalizeRemainingSeconds(value: number) {
+  return Math.max(0, Math.round(value));
+}
+
+function normalizeHeartbeatCount(value: number) {
+  return Math.max(0, Math.floor(value));
+}
+
+function deriveCountdownEndsAtMs(remainingSeconds: number) {
+  return Date.now() + normalizeRemainingSeconds(remainingSeconds) * 1_000;
+}
+
+function getRemainingMs(countdownEndsAtMs: number) {
+  return Math.max(0, countdownEndsAtMs - Date.now());
+}
+
+function getRemainingSecondsFromMs(remainingMs: number) {
+  if (remainingMs <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(remainingMs / 1_000);
 }
 
 function readPersistedState(sessionId: string): PersistedFocusState | null {
@@ -111,10 +142,27 @@ function readPersistedState(sessionId: string): PersistedFocusState | null {
       return null;
     }
 
+    if (
+      parsed.countdownEndsAtMs != null &&
+      (typeof parsed.countdownEndsAtMs !== "number" || !Number.isFinite(parsed.countdownEndsAtMs))
+    ) {
+      return null;
+    }
+
     return {
-      selectedMinutes: Math.max(1, Math.round(parsed.selectedMinutes)),
-      remainingSeconds: Math.max(0, Math.round(parsed.remainingSeconds)),
+      selectedMinutes: normalizePositiveWholeNumber(parsed.selectedMinutes),
+      remainingSeconds: normalizeRemainingSeconds(parsed.remainingSeconds),
       isPaused: parsed.isPaused,
+      countdownEndsAtMs:
+        parsed.isPaused
+          ? null
+          : typeof parsed.countdownEndsAtMs === "number"
+            ? Math.round(parsed.countdownEndsAtMs)
+            : deriveCountdownEndsAtMs(parsed.remainingSeconds),
+      acknowledgedHeartbeatCount:
+        typeof parsed.acknowledgedHeartbeatCount === "number" && Number.isFinite(parsed.acknowledgedHeartbeatCount)
+          ? normalizeHeartbeatCount(parsed.acknowledgedHeartbeatCount)
+          : undefined,
     };
   } catch {
     return null;
@@ -242,8 +290,15 @@ function deriveCycleHeartbeatCount(selectedMinutes: number, remainingSeconds: nu
   return Math.floor(elapsedSeconds / HEARTBEAT_SECONDS);
 }
 
+function deriveCycleHeartbeatCountFromRemainingMs(selectedMinutes: number, remainingMs: number) {
+  const totalMs = Math.max(0, selectedMinutes * 60 * 1_000);
+  const elapsedSeconds = Math.max(0, (totalMs - remainingMs) / 1_000);
+  return Math.floor(elapsedSeconds / HEARTBEAT_SECONDS);
+}
+
 export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHeartbeatResult {
   const [cycleHeartbeatCount, setCycleHeartbeatCount] = useState(0);
+  const [countdownEndsAtMs, setCountdownEndsAtMs] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
   const [isHeartbeatInFlight, setIsHeartbeatInFlight] = useState(false);
@@ -258,6 +313,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
   const mountedRef = useRef(true);
   const endingRef = useRef(false);
   const cycleHeartbeatCountRef = useRef(0);
+  const isTaskPollInFlightRef = useRef(false);
   const queuedHeartbeatCountRef = useRef(0);
 
   useEffect(() => {
@@ -276,6 +332,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
 
   useEffect(() => {
     if (!session) {
+      setCountdownEndsAtMs(null);
       setCycleHeartbeatCount(0);
       setErrorMessage(null);
       setIsEnding(false);
@@ -288,6 +345,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       setSelectedMinutesState(null);
       setStatusMessage(null);
       endingRef.current = false;
+      isTaskPollInFlightRef.current = false;
       cycleHeartbeatCountRef.current = 0;
       queuedHeartbeatCountRef.current = 0;
       return;
@@ -303,24 +361,50 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     setQueuedHeartbeatCount(0);
     setRemoteStatus(nextRemoteStatus);
     endingRef.current = false;
+    isTaskPollInFlightRef.current = false;
     queuedHeartbeatCountRef.current = 0;
 
     if (persistedState) {
-      const nextCycleHeartbeatCount = deriveCycleHeartbeatCount(
-        persistedState.selectedMinutes,
-        persistedState.remainingSeconds,
+      const isRunningFromStorage = !persistedState.isPaused && persistedState.countdownEndsAtMs != null;
+      const restoredCountdownEndsAtMs = isRunningFromStorage ? persistedState.countdownEndsAtMs : null;
+      const remainingMs = restoredCountdownEndsAtMs == null ? null : getRemainingMs(restoredCountdownEndsAtMs);
+      const nextRemainingSeconds =
+        remainingMs == null
+          ? persistedState.remainingSeconds
+          : getRemainingSecondsFromMs(remainingMs);
+      const completedHeartbeatCount =
+        remainingMs == null
+          ? deriveCycleHeartbeatCount(persistedState.selectedMinutes, nextRemainingSeconds)
+          : deriveCycleHeartbeatCountFromRemainingMs(persistedState.selectedMinutes, remainingMs);
+      const savedHeartbeatCount = deriveCycleHeartbeatCount(persistedState.selectedMinutes, persistedState.remainingSeconds);
+      const acknowledgedHeartbeatCount = Math.min(
+        completedHeartbeatCount,
+        normalizeHeartbeatCount(persistedState.acknowledgedHeartbeatCount ?? savedHeartbeatCount),
       );
+      const nextQueuedHeartbeatCount = Math.max(0, completedHeartbeatCount - acknowledgedHeartbeatCount);
 
-      cycleHeartbeatCountRef.current = nextCycleHeartbeatCount;
-      setCycleHeartbeatCount(nextCycleHeartbeatCount);
+      cycleHeartbeatCountRef.current = acknowledgedHeartbeatCount;
+      queuedHeartbeatCountRef.current = nextQueuedHeartbeatCount;
+      setCountdownEndsAtMs(restoredCountdownEndsAtMs);
+      setCycleHeartbeatCount(acknowledgedHeartbeatCount);
+      setQueuedHeartbeatCount(nextQueuedHeartbeatCount);
       setSelectedMinutesState(persistedState.selectedMinutes);
-      setRemainingSeconds(persistedState.remainingSeconds);
+      setRemainingSeconds(nextRemainingSeconds);
       setIsPaused(persistedState.isPaused);
-      setStatusMessage(persistedState.isPaused ? "已恢复暂停中的本地倒计时。" : "已恢复进行中的本地倒计时。");
+      setStatusMessage(
+        persistedState.isPaused
+          ? nextQueuedHeartbeatCount > 0
+            ? "已恢复暂停中的本地倒计时，待同步 heartbeat 已保留。"
+            : "已恢复暂停中的本地倒计时。"
+          : nextQueuedHeartbeatCount > 0
+            ? "已恢复进行中的本地倒计时，并补回待同步 heartbeat。"
+            : "已恢复进行中的本地倒计时。",
+      );
       return;
     }
 
     cycleHeartbeatCountRef.current = 0;
+    setCountdownEndsAtMs(null);
     setCycleHeartbeatCount(0);
     setIsPaused(true);
 
@@ -350,15 +434,17 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       selectedMinutes,
       remainingSeconds,
       isPaused,
+      countdownEndsAtMs: isPaused ? null : countdownEndsAtMs,
+      acknowledgedHeartbeatCount: cycleHeartbeatCount,
     });
-  }, [isPaused, remainingSeconds, selectedMinutes, session]);
+  }, [countdownEndsAtMs, cycleHeartbeatCount, isPaused, remainingSeconds, selectedMinutes, session]);
 
   useEffect(() => {
     if (
       !session ||
       remoteStatus !== "active" ||
       isPaused ||
-      remainingSeconds == null ||
+      countdownEndsAtMs == null ||
       selectedMinutes == null ||
       endingRef.current
     ) {
@@ -366,35 +452,30 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     }
 
     const timer = window.setInterval(() => {
-      setRemainingSeconds((currentValue) => {
-        if (currentValue == null || currentValue <= 0) {
-          return 0;
-        }
+      const remainingMs = getRemainingMs(countdownEndsAtMs);
+      const nextRemainingSeconds = getRemainingSecondsFromMs(remainingMs);
+      const completedHeartbeatCount = deriveCycleHeartbeatCountFromRemainingMs(selectedMinutes, remainingMs);
+      const acknowledgedHeartbeatCount = cycleHeartbeatCountRef.current + queuedHeartbeatCountRef.current;
 
-        const nextValue = Math.max(0, currentValue - 1);
-        const completedHeartbeatCount = deriveCycleHeartbeatCount(selectedMinutes, nextValue);
-        const acknowledgedHeartbeatCount = cycleHeartbeatCountRef.current + queuedHeartbeatCountRef.current;
+      setRemainingSeconds((currentValue) => (currentValue === nextRemainingSeconds ? currentValue : nextRemainingSeconds));
 
-        if (completedHeartbeatCount > acknowledgedHeartbeatCount) {
-          const diff = completedHeartbeatCount - acknowledgedHeartbeatCount;
-          queuedHeartbeatCountRef.current += diff;
-          window.queueMicrotask(() => {
-            if (!mountedRef.current) {
-              return;
-            }
+      if (completedHeartbeatCount > acknowledgedHeartbeatCount) {
+        const diff = completedHeartbeatCount - acknowledgedHeartbeatCount;
+        queuedHeartbeatCountRef.current += diff;
+        window.queueMicrotask(() => {
+          if (!mountedRef.current) {
+            return;
+          }
 
-            setQueuedHeartbeatCount((currentCount) => currentCount + diff);
-          });
-        }
-
-        return nextValue;
-      });
-    }, 1_000);
+          setQueuedHeartbeatCount((currentCount) => currentCount + diff);
+        });
+      }
+    }, LOCAL_TICK_INTERVAL_MS);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [isPaused, remainingSeconds, remoteStatus, selectedMinutes, session]);
+  }, [countdownEndsAtMs, isPaused, remoteStatus, selectedMinutes, session]);
 
   async function finishSession(endReason: FocusClientEndReason) {
     if (!session || endingRef.current) {
@@ -402,6 +483,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     }
 
     endingRef.current = true;
+    setCountdownEndsAtMs(null);
     setIsEnding(true);
     setIsPaused(true);
     setStatusMessage("正在写入结算摘要...");
@@ -434,6 +516,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     if (
       !session ||
       remoteStatus !== "active" ||
+      isPaused ||
       queuedHeartbeatCount <= 0 ||
       isHeartbeatInFlight ||
       endingRef.current
@@ -470,9 +553,10 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
           return;
         }
 
+        setCountdownEndsAtMs(null);
         setIsPaused(true);
         setErrorMessage(error instanceof Error ? error.message : "Failed to sync heartbeat.");
-        setStatusMessage("heartbeat 同步失败，已暂停本地倒计时。");
+        setStatusMessage("heartbeat 同步失败，已暂停本地倒计时；恢复后会继续补发。");
       } finally {
         if (!cancelled && mountedRef.current) {
           setIsHeartbeatInFlight(false);
@@ -485,7 +569,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     return () => {
       cancelled = true;
     };
-  }, [isHeartbeatInFlight, queuedHeartbeatCount, remoteStatus, session]);
+  }, [isPaused, queuedHeartbeatCount, remoteStatus, session]);
 
   useEffect(() => {
     if (
@@ -518,6 +602,12 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     let cancelled = false;
 
     const runPoll = async () => {
+      if (isTaskPollInFlightRef.current) {
+        return;
+      }
+
+      isTaskPollInFlightRef.current = true;
+
       try {
         const isInstanceStillActive = await pollTaskInstance(session);
 
@@ -533,6 +623,8 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
         if (!cancelled && mountedRef.current) {
           setStatusMessage("建造实例轮询暂时失败，稍后重试。");
         }
+      } finally {
+        isTaskPollInFlightRef.current = false;
       }
     };
 
@@ -558,8 +650,10 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       return;
     }
 
+    const nextRemainingSeconds = remainingSeconds ?? selectedMinutes * 60;
+
     if (remainingSeconds == null) {
-      setRemainingSeconds(selectedMinutes * 60);
+      setRemainingSeconds(nextRemainingSeconds);
     }
 
     setErrorMessage(null);
@@ -575,6 +669,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
           return;
         }
 
+        setCountdownEndsAtMs(deriveCountdownEndsAtMs(nextRemainingSeconds));
         setRemoteStatus("active");
         setIsPaused(false);
         setStatusMessage("session 已启动，倒计时进行中。");
@@ -594,11 +689,20 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       return;
     }
 
-    setIsPaused((currentValue) => {
-      const nextValue = !currentValue;
-      setStatusMessage(nextValue ? "已暂停本地倒计时。" : "本地倒计时继续。");
-      return nextValue;
-    });
+    if (isPaused) {
+      setCountdownEndsAtMs(deriveCountdownEndsAtMs(nextRemainingSeconds));
+      setIsPaused(false);
+      setStatusMessage("本地倒计时继续。");
+      return;
+    }
+
+    const pausedRemainingSeconds =
+      countdownEndsAtMs == null ? nextRemainingSeconds : getRemainingSecondsFromMs(getRemainingMs(countdownEndsAtMs));
+
+    setCountdownEndsAtMs(null);
+    setRemainingSeconds(pausedRemainingSeconds);
+    setIsPaused(true);
+    setStatusMessage("已暂停本地倒计时。");
   }
 
   async function stopSession() {
@@ -611,9 +715,12 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       return;
     }
 
+    const nextRemainingSeconds = selectedMinutes * 60;
+
+    setCountdownEndsAtMs(null);
     setErrorMessage(null);
     setIsPaused(true);
-    setRemainingSeconds(selectedMinutes * 60);
+    setRemainingSeconds(nextRemainingSeconds);
     setQueuedHeartbeatCount(0);
     setCycleHeartbeatCount(0);
     setStatusMessage("已重置当前本地倒计时，本轮零散秒数不会计入 heartbeat。");
@@ -621,20 +728,24 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     cycleHeartbeatCountRef.current = 0;
     persistState(session.id, {
       selectedMinutes,
-      remainingSeconds: selectedMinutes * 60,
+      remainingSeconds: nextRemainingSeconds,
       isPaused: true,
+      countdownEndsAtMs: null,
     });
   }
 
   function setSelectedMinutes(value: number | null) {
     if (value == null || !Number.isFinite(value) || value <= 0) {
+      setCountdownEndsAtMs(null);
       setSelectedMinutesState(null);
       setRemainingSeconds(null);
       return;
     }
 
-    const normalizedValue = Math.max(1, Math.round(value));
+    const normalizedValue = normalizePositiveWholeNumber(value);
+    setCountdownEndsAtMs(null);
     setErrorMessage(null);
+    setIsPaused(true);
     setSelectedMinutesState(normalizedValue);
     setRemainingSeconds(normalizedValue * 60);
     setQueuedHeartbeatCount(0);

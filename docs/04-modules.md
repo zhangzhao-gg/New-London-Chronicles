@@ -143,8 +143,10 @@
   - 右上保留语言切换占位，先支持 `zh-CN` / `en-US`
   - 右下展示当前用户，并放置自动任务开关 toggle
   - 底栏只有 `DISTRICTS` 与 `FOCUS`
-  - 若 `autoAssign = true`，点击 `FOCUS` 直接调用 `POST /api/tasks/assign-next` 并跳转 `/focus?sessionId=...`
-  - 若 `autoAssign = false`，点击 `FOCUS` 打开任务选择 modal
+  - 点击 `FOCUS` 时先调用 `GET /api/session/current?any=1` 检查当前是否已有 live session
+  - 若已有 live session，直接跳转 `/focus?sessionId=...`
+  - 若没有 live session 且 `autoAssign = true`，再调用 `POST /api/tasks/assign-next` 并跳转 `/focus?sessionId=...`
+  - 若没有 live session 且 `autoAssign = false`，打开任务选择 modal
 - 依赖：M03、M04、M06
 
 ## M09 — 区块 Modal

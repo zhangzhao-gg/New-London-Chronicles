@@ -137,6 +137,15 @@ function HeaderGlyph() {
   );
 }
 
+function BackGlyph() {
+  return (
+    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+      <path d="M8.5 12H20" />
+    </svg>
+  );
+}
+
 function AmbientGlyph({ soundId }: { soundId: AmbientSoundId }) {
   if (soundId === "focus") {
     return (
@@ -242,15 +251,15 @@ function ObjectiveItem({ row }: { row: ObjectiveRow }) {
 function SystemNotice({ children, tone = "default" }: { children: string; tone?: "default" | "error" | "warn" }) {
   const toneClassName =
     tone === "error"
-      ? "border-red-500/28 text-red-200"
+      ? "border-red-500/28 text-red-100 shadow-[0_18px_36px_rgba(127,29,29,0.28)]"
       : tone === "warn"
-        ? "border-amber-500/30 text-amber-100"
-        : "border-[rgba(244,164,98,0.2)] text-[var(--nlc-muted)]";
+        ? "border-amber-500/30 text-amber-100 shadow-[0_18px_36px_rgba(120,53,15,0.24)]"
+        : "border-[rgba(244,164,98,0.2)] text-[var(--nlc-muted)] shadow-[0_18px_36px_rgba(0,0,0,0.28)]";
 
   return (
     <div
       className={joinClasses(
-        "border bg-[rgba(8,5,4,0.52)] px-4 py-3 text-[0.72rem] uppercase tracking-[0.18em]",
+        "rounded-sm border bg-[rgba(8,5,4,0.92)] px-4 py-3 text-[0.68rem] uppercase tracking-[0.18em] backdrop-blur-sm",
         toneClassName,
       )}
     >
@@ -384,12 +393,13 @@ export function FocusExperience({
 
   const currentErrorMessage = errorMessage ?? heartbeatErrorMessage;
   const isSessionReady = !isLoading && session != null;
-  const canEditDuration = remoteStatus === "pending" || (remoteStatus === "active" && !isRunning && remainingSeconds == null);
+  const canEditDuration = remoteStatus === "pending" || (remoteStatus === "active" && isPaused);
   const districtLabel = session ? districtLabels[session.task.district] ?? session.task.district : "Unknown district";
   const previewMinutes = Number(selectedMinutesInput);
   const displaySeconds =
     remainingSeconds ??
     (Number.isFinite(previewMinutes) && previewMinutes > 0 ? Math.max(0, Math.round(previewMinutes) * 60) : null);
+  const restoredSessionNeedsDuration = !currentErrorMessage && remoteStatus === "active" && remainingSeconds == null;
 
   const focusStateLabel = useMemo(
     () => resolveFocusStateLabel(remoteStatus, isRunning),
@@ -402,6 +412,14 @@ export function FocusExperience({
 
   const objectiveSummary = session ? session.task.name : "Awaiting current objective";
   const systemStatus = remoteStatus === "active" ? "System Active" : isLoading ? "System Restoring" : "System Idle";
+  const notices = [
+    isLoading ? { key: "loading", tone: "default" as const, message: "Restoring current session..." } : null,
+    statusMessage ? { key: "status", tone: "default" as const, message: statusMessage } : null,
+    currentErrorMessage ? { key: "error", tone: "error" as const, message: currentErrorMessage } : null,
+    restoredSessionNeedsDuration
+      ? { key: "restored", tone: "warn" as const, message: "Current session restored. Re-enter duration to resume local countdown." }
+      : null,
+  ].filter(Boolean) as Array<{ key: string; tone: "default" | "error" | "warn"; message: string }>;
 
   const objectives = useMemo<ObjectiveRow[]>(
     () => [
@@ -443,9 +461,26 @@ export function FocusExperience({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,164,98,0.06),transparent_36%)]" />
 
       <div className="relative z-10 flex min-h-screen flex-col lg:h-screen">
+        <div className="pointer-events-none absolute right-4 top-4 z-40 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 sm:right-6 sm:top-5">
+          {notices.map((notice) => (
+            <SystemNotice key={notice.key} tone={notice.tone}>
+              {notice.message}
+            </SystemNotice>
+          ))}
+        </div>
+
         <header className="border-b border-[rgba(244,164,98,0.18)] bg-[rgba(13,9,7,0.96)]">
           <div className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
             <div className="flex items-center gap-3">
+              <button
+                aria-label="返回城市"
+                className="nlc-focus-ring inline-flex h-8 items-center gap-2 rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(20,13,9,0.72)] px-3 text-[0.62rem] uppercase tracking-[0.18em] text-[var(--nlc-muted)] transition-colors hover:border-[rgba(255,157,0,0.42)] hover:text-[var(--nlc-orange)]"
+                onClick={() => navigateTo("/city")}
+                type="button"
+              >
+                <BackGlyph />
+                <span className="hidden sm:inline">City</span>
+              </button>
               <div className="flex size-7 items-center justify-center text-[var(--nlc-orange)]">
                 <HeaderGlyph />
               </div>
@@ -594,10 +629,11 @@ export function FocusExperience({
 
                     <div className="mt-4 grid w-full grid-cols-3 gap-2">
                       {ambientOptions.map((option) => {
-                        const isActive = audioSnapshot.ambientSoundId === option.id;
+                        const isActive = audioSnapshot.ambientSoundId === option.id && audioSnapshot.isAmbientPlaying;
 
                         return (
                           <button
+                            aria-label={isActive ? `暂停${option.label}环境音` : `播放${option.label}环境音`}
                             key={option.id}
                             aria-pressed={isActive}
                             className={joinClasses(
@@ -676,14 +712,6 @@ export function FocusExperience({
                   </div>
                 </div>
 
-                <div className="mt-2.5 space-y-2">
-                  {isLoading ? <SystemNotice>Restoring current session...</SystemNotice> : null}
-                  {statusMessage ? <SystemNotice>{statusMessage}</SystemNotice> : null}
-                  {currentErrorMessage ? <SystemNotice tone="error">{currentErrorMessage}</SystemNotice> : null}
-                  {!currentErrorMessage && remoteStatus === "active" && remainingSeconds == null ? (
-                    <SystemNotice tone="warn">Current session restored. Re-enter duration to resume local countdown.</SystemNotice>
-                  ) : null}
-                </div>
               </div>
             </div>
           </section>
