@@ -116,8 +116,8 @@
 ## 已完成的验证
 
 - `npx tsc --noEmit` 通过
-- `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run --silent build` 通过
-- `PLAYWRIGHT_START_COMMAND='npm run start:insecure' NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test tests/e2e/app.spec.ts --reporter=line` 通过
+- `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run --silent build` 通过（仅限本地临时调试，禁止用于 CI/生产）
+- `PLAYWRIGHT_START_COMMAND='npm run start:insecure' NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test tests/e2e/app.spec.ts --reporter=line` 通过（仅限本地临时调试，禁止用于 CI/生产）
 - 全量 `tests/e2e/app.spec.ts` 结果：`10 passed`
 
 ## 说明

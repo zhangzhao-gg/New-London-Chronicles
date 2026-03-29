@@ -15,7 +15,7 @@
   --color-nlc-panel: var(--nlc-panel);
   --color-nlc-muted: var(--nlc-muted);
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", georgia, serif;
-  --font-sans: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", "Arial", sans-serif;
+  --font-sans: -apple-system, system-ui, "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
 }
 
 :root {
