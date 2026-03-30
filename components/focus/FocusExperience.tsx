@@ -271,7 +271,7 @@ function TodoItemRow({
       </span>
       <button
         aria-label="删除待办"
-        className="nlc-focus-ring ml-auto shrink-0 text-[rgba(247,221,197,0.28)] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+        className="nlc-focus-ring ml-auto shrink-0 text-[rgba(247,221,197,0.28)] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
         onClick={onDelete}
         type="button"
       >
