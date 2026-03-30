@@ -1,128 +1,97 @@
 # 2026-03-26 Fix Summary
 
-## 已修复
+## 已修复（本轮 bugfix）
 
-### 1. Focus 默认 25 分钟不可直接开始
+### 1. Focus 页 session 恢复失败时红色报错
 
-- 已修复：`pending` session 进入 `/focus` 后会初始化真实的 25 分钟本地状态
-- 当前结果：默认 `duration=25`，开始按钮可直接点击
+- 修复：catch 分支改为静默重定向回 `/city`，不再展示错误框
+- 文件：`components/focus/FocusExperience.tsx`
 
-### 2. City 首屏在常见桌面视口下显示不全
+### 2. City 区块任务冲突时显示红色错误框
 
-- 已修复：压缩了城市页桌面布局，底部操作带和右下角个人卡重新回到首屏可视区
-- 当前结果：`1440x900` 下首屏完整可见
+- 修复：CONFLICT 响应改为右上角 toast 提示 + 模态框抖动，不再用红色 error 框
+- 文件：`components/city/DistrictModal.tsx`、`app/globals.css`（shake/toast 动画）、`components/ui/Modal.tsx`（panelClassName）
 
-### 3. Focus 页面整体比例过大
+### 3. 多标签页重复结算 session
 
-- 已修复：收紧了头部、左侧辅助区、主计时区、底部导航和播放器尺寸
-- 当前结果：`1440x900` 下不再依赖浏览器缩放才能正常使用
+- 修复：`use-heartbeat` 新增 localStorage 跨标签通知，一个标签结束后其他标签自动检测并跳转
+- 文件：`hooks/use-heartbeat.ts`
 
-### 4. 完成页“选择下一个任务”不能真正打开任务选择
+### 4. City 六大区块全部挤在中央
 
-- 已修复：完成页改为跳 `/city?openTasks=1`，城市页会自动打开任务 modal
+- 修复：区块定位从 Tailwind class 改为 inline style，并修复 Tooltip 的 `relative` wrapper 导致绝对定位失效的问题
+- 文件：`components/city/CityPageShell.tsx`、`components/ui/Tooltip.tsx`
 
-### 5. Focus 深链恢复不稳定
+### 5. 医疗站与其他区块重叠
 
-- 已修复：`/focus` 服务端入口会读取 `searchParams.sessionId` 并下传给客户端恢复链
+- 修复：调整医疗站定位至 `top: 28%, right: 22%`
+- 文件：`components/city/CityPageShell.tsx`
 
-### 6. 计时结束与 heartbeat 提交竞态
+### 6. 哨站和工业资源区颜色不明显
 
-- 已修复：结束判定已纳入待提交 heartbeat 状态，避免进度和完成态抢跑
+- 修复：工业资源区 slate → amber，哨站 slate → cyan
+- 文件：`components/city/CityPageShell.tsx`
 
-### 7. 按钮无障碍名不足导致测试和交互不稳
+### 7. Focus Shift Objectives 改为交互式待办事项
 
-- 已修复：Focus 主按钮、重来等关键操作已补上可稳定访问的名称
+- 修复：替换硬编码 objectives 为 localStorage 持久化的 todo list，支持添加/打勾（横杠效果）/删除
+- 文件：`components/focus/FocusExperience.tsx`
 
-### 8. City 底部 `FOCUS` 在已有 live session 时暴露冲突 JSON
+### 8. Focus 布局重构：Expedition Notes 归入左侧面板底部
 
-- 已修复：已有 live session 时会直接恢复到当前 `/focus?sessionId=...`
+- 修复：Expedition Notes 从独立 section 移入 Shift Objectives 同一面板，用 `mt-auto` 推到底部
+- 文件：`components/focus/FocusExperience.tsx`
 
-### 9. Focus 页面缺少返回 City 的入口
+### 9. 音乐播放器播放按钮缺圆角
 
-- 已修复：Focus 页左上已加入“返回城市”按钮
+- 修复：添加 `rounded-lg`
+- 文件：`components/focus/MusicPlayer.tsx`
 
-### 10. 区块弹窗 `前往工作` 在已有 live session 时跳错页面
+### 10. Focus 右上角 toast 不会自动消失
 
-- 已修复：区块任务冲突时不再自动跳转，而是在 modal 内提示“你已经有工作了，请先完成当前专注任务。”
+- 修复：SystemNotice 添加 2.8s 自动淡出消失逻辑
+- 文件：`components/focus/FocusExperience.tsx`
 
-### 11. 底部 `FOCUS` 在关闭 Auto assign 后仍错误打开任务列表
+### 11. Duration 输入框移入番茄钟内
 
-- 已修复：点击 `FOCUS` 现在会先检查 live session；若存在，优先恢复；若不存在，再按 Auto assign 分支处理
+- 修复：删除底部 Duration 区块和提示文案，改为番茄钟圆盘内时间右侧上下三角按钮（±5 分钟），运行中自动隐藏
+- 文件：`components/focus/FocusExperience.tsx`
 
-### 12. `next dev` 与 `next build/start` 共用产物目录导致 `/focus` 500
+### 12. Focus 播放/重置按钮缺圆角
 
-- 已修复：开发态使用 `.next-dev`，构建/生产态继续使用 `.next`
-- 当前结果：`/focus` 的 `.next/server/app/focus/page.js` 丢失问题已收敛
+- 修复：TimerControl 添加 `rounded-lg`
+- 文件：`components/focus/FocusExperience.tsx`
 
-### 13. 登录态在 30 分钟到 1 小时左右失效
+## 历史已修复（之前轮次）
 
-- 已修复：自定义 cookie `nlc-sb-anon-session` 不再把浏览器过期时间绑定到 Supabase access token 的 `expires_at`
-- 根因：浏览器之前会在 access token 到期时把整个 cookie 一起删掉，连 refresh token 也一并丢失
-- 当前结果：access token 失效后，后端仍可借助 refresh token 自动续期
-
-### 14. heartbeat 已成功返回但 `building_completed` 仍卡在 Focus
-
-- 已修复：heartbeat sender effect 不再因为 `isHeartbeatInFlight` 的状态切换立刻 cleanup 自己，成功返回后会继续写 `/api/session/end` 并跳转 `/complete`
-- 补充修复：本地持久化现在会记录已确认 heartbeat 数，恢复 session 时会补回未同步队列；build/work 轮询也加了并发保护
-- 当前结果：`build session completion enters complete with building_completed` E2E 已通过，`timer_completed` 与 `building_completed` 结算链都能稳定落到 `/complete`
-
-### 15. Playwright `webServer` 自动起服务误判 ready
-
-- 已修复：Playwright 配置从 `url` readiness probe 改成 `port`，并通过 `PLAYWRIGHT_REUSE_EXISTING_SERVER` 显式控制是否复用现有 server
-- 当前结果：不手动起 server 时，E2E 也能自动拉起 `next start` 并稳定执行
+- Focus 默认 25 分钟不可直接开始
+- City 首屏在常见桌面视口下显示不全
+- Focus 页面整体比例过大
+- 完成页"选择下一个任务"不能真正打开任务选择
+- Focus 深链恢复不稳定
+- 计时结束与 heartbeat 提交竞态
+- 按钮无障碍名不足导致测试和交互不稳
+- City 底部 FOCUS 在已有 live session 时暴露冲突 JSON
+- Focus 页面缺少返回 City 的入口
+- 底部 FOCUS 在关闭 Auto assign 后仍错误打开任务列表
+- next dev 与 next build/start 共用产物目录导致 /focus 500
+- 登录态在 30 分钟到 1 小时左右失效
+- heartbeat 已成功返回但 building_completed 仍卡在 Focus
+- Playwright webServer 自动起服务误判 ready
 
 ## 还没修复的问题
 
-### 1. 失效或已结束的 `sessionId` 深链回退
+### 1. 失效或已结束的 sessionId 深链回退
 
-- 现象：访问 `/focus?sessionId=...` 时，如果 `sessionId` 已失效、已结束或不属于当前可恢复会话，页面仍可能停在错误态
-- 正确预期：应稳定回退到 `/city`
+- 现象：访问 `/focus?sessionId=...` 时，如果 sessionId 已失效，页面仍可能停在错误态
 - 状态：未修复
 
-### 2. `/complete` 在 `next dev` 下偶发 chunk 404
+### 2. /complete 在 next dev 下偶发 chunk 404
 
-- 现象：结算后浏览器偶发请求 `/_next/static/chunks/app/complete/page.js` 返回 `404`
-- 当前判断：这是 Next dev / HMR / manifest 运行态异常，不是 `POST /api/session/end` 业务错误
-- 当前临时处理：停掉 dev、隔离 `.next-dev`、重新启动 `npm run dev:insecure`
+- 现象：结算后浏览器偶发请求 chunk 返回 404
 - 状态：未根治
-
-### 3. `Duration` 的可编辑规则还没完全确认
-
-- 现状：只能确认 `active + running` 时不可编辑是设计行为
-- 未确认部分：`pending` 或 `paused` 态下是否仍存在偶发不可编辑
-- 状态：待确认
-
-### 4. 双窗口下另一窗口仍可再次点击结算
-
-- 现象：同一个 focus session 同时开两个窗口时，一个窗口完成结算后，另一个窗口仍可能继续点一次“结算”
-- 初步判断：当前 `endingRef` 只是单窗口内存态，没有做跨窗口的 `ending/ended` 同步
-- 风险判断：按 [`docs/03-api-contracts.md`](../docs/03-api-contracts.md) 约定，`POST /api/session/end` 应为幂等，且 `city_logs` 每个 session 只写一条；理论上不应重复计算或重复写日志
-- 仍未确认：虽然文档契约如此，但当前还没有针对“双窗口重复点击结算”做专项数据库或 E2E 验证，所以是否绝对不会重复计账，暂时不能下最终结论
-- 状态：未修复，是否重复计账待验证
-
-## 仍有风险或覆盖不足的场景
-
-### 1. 未补足的专项链路
-
-- `resource_exhausted`
-- `timeout` 12 小时链路
-- `medical-shift/no_patients`
-
-### 2. 并发与运行态风险
-
-- 多人并发 heartbeat / 建造完成竞态还没有高压力验证
-- 当前鉴权链是手写 Supabase Auth REST + 自定义 cookie，不是官方 Next.js SSR 最佳实践，后续仍有维护风险
 
 ## 已完成的验证
 
-- `npx tsc --noEmit` 通过
-- `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run --silent build` 通过（仅限本地临时调试，禁止用于 CI/生产）
-- `PLAYWRIGHT_START_COMMAND='npm run start:insecure' NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test tests/e2e/app.spec.ts --reporter=line` 通过（仅限本地临时调试，禁止用于 CI/生产）
-- 全量 `tests/e2e/app.spec.ts` 结果：`10 passed`
-
-## 说明
-
-- 语言切换当前按 `docs/README.md` 与 `docs/04-modules.md` 只要求“占位”，不列为未修 bug
-- `Newsreader` 远端字体请求问题已处理，不再列为遗留项
-- 环境音按钮暂停行为已处理，不再列为遗留项
-- `Focus` 顶部提示改成右上角 toast 目前属于体验优化，不计入未修 bug
+- `npx tsc --noEmit` 通过（排除预存 Playwright 类型错误）
+- 8 个文件修改，387 行新增，158 行删除

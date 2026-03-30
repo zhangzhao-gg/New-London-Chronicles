@@ -24,6 +24,7 @@ export type ModalProps = {
   closeLabel?: string;
   size?: ModalSize;
   dismissOnBackdrop?: boolean;
+  panelClassName?: string;
 };
 
 const sizeClasses: Record<ModalSize, string> = {
@@ -60,6 +61,7 @@ export function Modal({
   footer,
   onClose,
   open,
+  panelClassName,
   size = "md",
   title,
 }: ModalProps) {
@@ -162,6 +164,7 @@ export function Modal({
           "nlc-panel nlc-inset nlc-etched relative z-10 w-full overflow-hidden rounded-2xl border text-left",
           "max-h-[calc(100vh-3rem)]",
           sizeClasses[size],
+          panelClassName,
         )}
         onKeyDown={handleKeyDown}
         role="dialog"

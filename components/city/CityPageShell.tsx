@@ -39,7 +39,7 @@ type DistrictVisual = {
   englishLabel: string;
   icon: string;
   layout: "corner-left" | "corner-right" | "center";
-  positionClassName: string;
+  positionStyle: React.CSSProperties;
   surfaceClassName: string;
   accentClassName: string;
   tooltipSide: TooltipSide;
@@ -55,15 +55,17 @@ const resourceRailLabels: Record<ResourceKind, string> = {
   temperature: "Temperature",
 };
 
+/* ─── 区块定位直接用 style 驱动，绕开 Tailwind 百分比类名扫描不确定性 ─── */
+
 const districtVisuals: Record<DistrictKey, DistrictVisual> = {
   resource: {
     badge: "工业资源区",
     englishLabel: "Industrial Resource Zone",
     icon: "⚙",
     layout: "corner-left",
-    positionClassName: "left-[18%] top-[22%] h-24 w-44 md:left-[28%] md:top-[20%] md:h-30 md:w-52",
-    surfaceClassName: "border-slate-500/45 bg-slate-500/8 text-slate-200 hover:bg-slate-500/12",
-    accentClassName: "text-slate-400/85",
+    positionStyle: { top: "20%", left: "30%", width: "14rem", height: "8rem" },
+    surfaceClassName: "border-amber-400/40 bg-amber-500/12 text-amber-100 hover:bg-amber-500/18",
+    accentClassName: "text-amber-300/90",
     tooltipSide: "bottom",
   },
   residential: {
@@ -71,7 +73,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Residential Settlement",
     icon: "⌂",
     layout: "corner-right",
-    positionClassName: "bottom-[20%] right-[14%] h-32 w-52 md:bottom-[20%] md:right-[22%] md:h-36 md:w-60",
+    positionStyle: { bottom: "20%", right: "25%", width: "16rem", height: "10rem" },
     surfaceClassName:
       "border-[rgba(244,164,98,0.34)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.14)]",
     accentClassName: "text-[rgba(255,193,137,0.82)]",
@@ -82,7 +84,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Emergency Medical Post",
     icon: "✚",
     layout: "center",
-    positionClassName: "right-[4%] top-[41%] h-28 w-28 md:right-[10%] md:top-[41%] md:h-34 md:w-34",
+    positionStyle: { top: "28%", right: "22%", width: "10rem", height: "10rem" },
     surfaceClassName: "border-blue-400/40 bg-blue-500/8 text-blue-200 hover:bg-blue-500/14",
     accentClassName: "text-blue-300/76",
     tooltipSide: "left",
@@ -92,7 +94,7 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Food Production",
     icon: "❈",
     layout: "center",
-    positionClassName: "bottom-[38%] left-[6%] h-20 w-32 md:bottom-[38%] md:left-[10%] md:h-22 md:w-36",
+    positionStyle: { bottom: "40%", left: "10%", width: "10rem", height: "6rem" },
     surfaceClassName: "border-green-800/35 bg-green-800/8 text-green-200 hover:bg-green-800/14",
     accentClassName: "text-green-400/76",
     tooltipSide: "top",
@@ -102,9 +104,9 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     englishLabel: "Outpost",
     icon: "◈",
     layout: "center",
-    positionClassName: "right-[26%] top-[10%] h-16 w-28 md:right-[36%] md:top-[11%] md:h-18 md:w-30",
-    surfaceClassName: "border-slate-700/45 bg-slate-700/8 text-slate-300 hover:bg-slate-700/14",
-    accentClassName: "text-slate-400/80",
+    positionStyle: { top: "10%", right: "40%", width: "8rem", height: "5rem" },
+    surfaceClassName: "border-cyan-400/40 bg-cyan-500/12 text-cyan-100 hover:bg-cyan-500/18",
+    accentClassName: "text-cyan-300/85",
     tooltipSide: "bottom",
   },
 };
@@ -201,6 +203,8 @@ function DistrictZone({
 
   return (
     <Tooltip
+      className="!absolute"
+      style={visual.positionStyle}
       content={
         <div className="space-y-1.5">
           <div className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-[var(--nlc-orange)]">
@@ -216,9 +220,8 @@ function DistrictZone({
       <button
         aria-label={district.label}
         className={joinClasses(
-          "absolute overflow-hidden rounded-sm border text-left shadow-[0_18px_50px_rgba(0,0,0,0.32)] transition duration-200",
+          "h-full w-full overflow-hidden rounded-sm border text-left shadow-[0_18px_50px_rgba(0,0,0,0.32)] transition duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nlc-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nlc-dark)]",
-          visual.positionClassName,
           visual.surfaceClassName,
           active && "scale-[1.02] shadow-[0_0_28px_rgba(255,157,0,0.18)]",
         )}

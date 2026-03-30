@@ -120,7 +120,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
 
             <button
               aria-label={snapshot.isMusicPlaying ? "暂停播放" : "开始播放"}
-              className="nlc-focus-ring inline-flex size-9 items-center justify-center border border-[rgba(255,208,165,0.34)] bg-[linear-gradient(180deg,#f6b16f_0%,var(--nlc-orange)_100%)] text-[var(--nlc-dark)] shadow-[0_0_18px_rgba(244,164,98,0.18)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="nlc-focus-ring inline-flex size-9 items-center justify-center rounded-lg border border-[rgba(255,208,165,0.34)] bg-[linear-gradient(180deg,#f6b16f_0%,var(--nlc-orange)_100%)] text-[var(--nlc-dark)] shadow-[0_0_18px_rgba(244,164,98,0.18)] disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!snapshot.activeTrack}
               onClick={() => {
                 void audioManager.toggleMusic();
