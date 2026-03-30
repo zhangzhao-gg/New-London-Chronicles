@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import MusicPlayer from "@/components/focus/MusicPlayer";
 import type { UserDto } from "@/lib/auth";
@@ -25,11 +25,10 @@ type SessionResponse = {
   error?: { message?: string };
 };
 
-type ObjectiveRow = {
+type TodoItem = {
   id: string;
-  title: string;
-  detail: string;
-  tone: "active" | "complete" | "idle";
+  text: string;
+  done: boolean;
 };
 
 type AmbientOption = {
@@ -54,6 +53,23 @@ const ambientOptions: AmbientOption[] = [
   { id: "chill", label: "Chill", hint: "大雪" },
   { id: "rest", label: "Rest", hint: "小雪" },
 ];
+
+function todosKey(username: string) {
+  return `nlc:focus-todos:${username}`;
+}
+
+function loadTodos(key: string): TodoItem[] {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as TodoItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTodos(key: string, todos: TodoItem[]) {
+  localStorage.setItem(key, JSON.stringify(todos));
+}
 
 function joinClasses(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -213,42 +229,88 @@ function ResetGlyph() {
   );
 }
 
-function ObjectiveMarker({ tone }: { tone: ObjectiveRow["tone"] }) {
-  if (tone === "complete") {
-    return (
-      <span className="flex size-5 items-center justify-center border border-[rgba(244,164,98,0.34)] bg-[rgba(244,164,98,0.08)] text-[0.65rem] text-[var(--nlc-orange)]">
-        ✓
-      </span>
-    );
-  }
-
+function DeleteGlyph() {
   return (
-    <span
-      className={joinClasses(
-        "flex size-5 items-center justify-center border text-[0.65rem]",
-        tone === "active"
-          ? "border-[rgba(244,164,98,0.48)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]"
-          : "border-[rgba(244,164,98,0.18)] bg-transparent text-[rgba(247,221,197,0.46)]",
-      )}
-    >
-      {tone === "active" ? "◻" : ""}
-    </span>
+    <svg aria-hidden="true" className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
   );
 }
 
-function ObjectiveItem({ row }: { row: ObjectiveRow }) {
+function TodoItemRow({
+  item,
+  onDelete,
+  onToggle,
+}: {
+  item: TodoItem;
+  onDelete: () => void;
+  onToggle: () => void;
+}) {
   return (
-    <li className="flex items-start gap-3 py-3 text-[0.94rem] text-[rgba(247,221,197,0.78)]">
-      <ObjectiveMarker tone={row.tone} />
-      <div className="min-w-0">
-        <div className="font-semibold tracking-[0.04em] text-[rgba(247,221,197,0.92)]">{row.title}</div>
-        <div className="mt-1 text-[0.72rem] uppercase tracking-[0.18em] text-[var(--nlc-muted)]">{row.detail}</div>
-      </div>
+    <li className="group flex items-center gap-3 py-3 text-[0.94rem]">
+      <button
+        aria-label={item.done ? "标记未完成" : "标记完成"}
+        className={joinClasses(
+          "nlc-focus-ring flex size-5 shrink-0 items-center justify-center border text-[0.65rem] transition-colors",
+          item.done
+            ? "border-[rgba(244,164,98,0.34)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]"
+            : "border-[rgba(244,164,98,0.48)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]",
+        )}
+        onClick={onToggle}
+        type="button"
+      >
+        {item.done ? "✓" : ""}
+      </button>
+      <span
+        className={joinClasses(
+          "min-w-0 flex-1 font-semibold tracking-[0.04em] transition-all",
+          item.done
+            ? "text-[rgba(247,221,197,0.38)] line-through decoration-[rgba(244,164,98,0.5)]"
+            : "text-[rgba(247,221,197,0.92)]",
+        )}
+      >
+        {item.text}
+      </span>
+      <button
+        aria-label="删除待办"
+        className="nlc-focus-ring ml-auto shrink-0 text-[rgba(247,221,197,0.28)] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+        onClick={onDelete}
+        type="button"
+      >
+        <DeleteGlyph />
+      </button>
     </li>
   );
 }
 
-function SystemNotice({ children, tone = "default" }: { children: string; tone?: "default" | "error" | "warn" }) {
+function SystemNotice({
+  children,
+  onDismiss,
+  tone = "default",
+}: {
+  children: string;
+  onDismiss?: () => void;
+  tone?: "default" | "error" | "warn";
+}) {
+  const [exiting, setExiting] = useState(false);
+  const onDismissRef = useRef(onDismiss);
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  useEffect(() => {
+    if (!onDismissRef.current) return;
+    const id = setTimeout(() => setExiting(true), 2800);
+    return () => clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (!exiting) return;
+    const id = setTimeout(() => onDismissRef.current?.(), 220);
+    return () => clearTimeout(id);
+  }, [exiting]);
+
   const toneClassName =
     tone === "error"
       ? "border-red-500/28 text-red-100 shadow-[0_18px_36px_rgba(127,29,29,0.28)]"
@@ -259,8 +321,9 @@ function SystemNotice({ children, tone = "default" }: { children: string; tone?:
   return (
     <div
       className={joinClasses(
-        "rounded-sm border bg-[rgba(8,5,4,0.92)] px-4 py-3 text-[0.68rem] uppercase tracking-[0.18em] backdrop-blur-sm",
+        "rounded-sm border bg-[rgba(8,5,4,0.92)] px-4 py-3 text-[0.68rem] uppercase tracking-[0.18em] backdrop-blur-sm transition-opacity duration-200",
         toneClassName,
+        exiting && "opacity-0",
       )}
     >
       {children}
@@ -285,7 +348,7 @@ function TimerControl({
     <button
       aria-label={ariaLabel}
       className={joinClasses(
-        "nlc-focus-ring inline-flex size-11 items-center justify-center border transition-all",
+        "nlc-focus-ring inline-flex size-11 items-center justify-center rounded-lg border transition-all",
         primary
           ? "border-[rgba(255,208,165,0.34)] bg-[linear-gradient(180deg,#f6b16f_0%,var(--nlc-orange)_100%)] text-[var(--nlc-dark)] shadow-[0_0_24px_rgba(244,164,98,0.22)]"
           : "border-[rgba(244,164,98,0.24)] bg-[rgba(20,13,9,0.84)] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.08)]",
@@ -319,6 +382,11 @@ export function FocusExperience({
   const [notes, setNotes] = useState("");
   const [session, setSession] = useState<FocusSession | null>(null);
   const [selectedMinutesInput, setSelectedMinutesInput] = useState("25");
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [newTodoText, setNewTodoText] = useState("");
+  const [isAddingTodo, setIsAddingTodo] = useState(false);
+  const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(new Set());
+  const newTodoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -340,9 +408,10 @@ export function FocusExperience({
         }
 
         setSession(restoredSession);
-      } catch (error) {
+      } catch {
         if (!cancelled) {
-          setErrorMessage(error instanceof Error ? error.message : "Failed to restore current session.");
+          navigateTo("/city", { replace: true });
+          return;
         }
       } finally {
         if (!cancelled) {
@@ -358,11 +427,16 @@ export function FocusExperience({
     };
   }, [initialSessionId]);
 
+  const storageKey = todosKey(initialUser.username);
+
+  useEffect(() => {
+    setTodos(loadTodos(storageKey));
+  }, [storageKey]);
+
   const {
     cycleHeartbeatCount,
     errorMessage: heartbeatErrorMessage,
     isEnding,
-    isHeartbeatInFlight,
     isPaused,
     isReady,
     isRunning,
@@ -390,6 +464,32 @@ export function FocusExperience({
 
     setSelectedMinutesInput(String(selectedMinutes));
   }, [selectedMinutes]);
+
+  const updateTodos = useCallback((next: TodoItem[]) => {
+    setTodos(next);
+    saveTodos(storageKey, next);
+  }, [storageKey]);
+
+  const addTodo = useCallback(() => {
+    const text = newTodoText.trim();
+    if (!text) return;
+    const item: TodoItem = { id: crypto.randomUUID(), text, done: false };
+    updateTodos([...todos, item]);
+    setNewTodoText("");
+    setIsAddingTodo(false);
+  }, [newTodoText, todos, updateTodos]);
+
+  const toggleTodo = useCallback((id: string) => {
+    updateTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  }, [todos, updateTodos]);
+
+  const deleteTodo = useCallback((id: string) => {
+    updateTodos(todos.filter((t) => t.id !== id));
+  }, [todos, updateTodos]);
+
+  const dismissNotice = useCallback((key: string) => {
+    setDismissedNotices((prev) => new Set(prev).add(key));
+  }, []);
 
   const currentErrorMessage = errorMessage ?? heartbeatErrorMessage;
   const isSessionReady = !isLoading && session != null;
@@ -419,31 +519,7 @@ export function FocusExperience({
     restoredSessionNeedsDuration
       ? { key: "restored", tone: "warn" as const, message: "Current session restored. Re-enter duration to resume local countdown." }
       : null,
-  ].filter(Boolean) as Array<{ key: string; tone: "default" | "error" | "warn"; message: string }>;
-
-  const objectives = useMemo<ObjectiveRow[]>(
-    () => [
-      {
-        detail: districtLabel,
-        id: "01",
-        title: session ? `Audit ${session.task.name}` : "Await deployment order",
-        tone: "active",
-      },
-      {
-        detail: isHeartbeatInFlight ? "Telemetry sync in progress" : "10 minute heartbeat protocol",
-        id: "02",
-        title: remoteStatus === "active" ? "Maintain field cadence" : "Prepare shift ignition",
-        tone: remoteStatus === "active" ? "complete" : "idle",
-      },
-      {
-        detail: notes.trim() ? `${notes.length} chars encrypted` : "Encrypted after settlement",
-        id: "03",
-        title: notes.trim() ? "Field notes recorded" : "Log observations before shutdown",
-        tone: notes.trim() ? "complete" : "idle",
-      },
-    ],
-    [districtLabel, isHeartbeatInFlight, notes, remoteStatus, session],
-  );
+  ].filter((n): n is NonNullable<typeof n> => n != null && !dismissedNotices.has(n.key));
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#070504] text-[var(--nlc-text)] lg:h-screen">
@@ -463,7 +539,7 @@ export function FocusExperience({
       <div className="relative z-10 flex min-h-screen flex-col lg:h-screen">
         <div className="pointer-events-none absolute right-4 top-4 z-40 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 sm:right-6 sm:top-5">
           {notices.map((notice) => (
-            <SystemNotice key={notice.key} tone={notice.tone}>
+            <SystemNotice key={notice.key} onDismiss={() => dismissNotice(notice.key)} tone={notice.tone}>
               {notice.message}
             </SystemNotice>
           ))}
@@ -527,7 +603,7 @@ export function FocusExperience({
         <main className="grid min-h-0 flex-1 overflow-hidden pb-[5.5rem] lg:grid-cols-[30%_70%]">
           <aside className="flex min-h-0 flex-col overflow-hidden border-b border-[rgba(244,164,98,0.12)] lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.18)]">
             <section
-              className="relative min-h-[9rem] flex-[0.68] overflow-hidden border-b border-[rgba(244,164,98,0.16)] px-4 py-4 sm:px-5"
+              className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-5"
               style={{
                 backgroundImage: `linear-gradient(180deg,rgba(93,122,153,0.72),rgba(45,58,72,0.54)), linear-gradient(90deg,rgba(18,14,12,0.02),rgba(18,14,12,0.54)), url(${FOCUS_BACKGROUND_URL})`,
                 backgroundPosition: "center",
@@ -535,45 +611,85 @@ export function FocusExperience({
               }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,8,10,0.08),rgba(6,8,10,0.4))]" />
-              <div className="relative">
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="m-0 text-[1.2rem] font-semibold uppercase italic tracking-[0.04em] text-[#eef1f5]">
-                    Shift Objectives
-                  </h2>
-                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.26em] text-[var(--nlc-orange)]">
-                    Priority Alpha
-                  </span>
+              <div className="relative flex min-h-full flex-col">
+                {/* ── Shift Objectives ── */}
+                <div>
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="m-0 text-[1.2rem] font-semibold uppercase italic tracking-[0.04em] text-[#eef1f5]">
+                      Shift Objectives
+                    </h2>
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.26em] text-[var(--nlc-orange)]">
+                      Priority Alpha
+                    </span>
+                  </div>
+
+                  <ul className="mt-3 divide-y divide-[rgba(238,241,245,0.12)] border-t border-[rgba(238,241,245,0.16)]">
+                    {todos.map((item) => (
+                      <TodoItemRow
+                        key={item.id}
+                        item={item}
+                        onDelete={() => deleteTodo(item.id)}
+                        onToggle={() => toggleTodo(item.id)}
+                      />
+                    ))}
+                  </ul>
+
+                  {todos.length === 0 && !isAddingTodo ? (
+                    <p className="mt-2 text-[0.72rem] uppercase tracking-[0.18em] text-[var(--nlc-muted)]">
+                      No objectives yet. Add one below.
+                    </p>
+                  ) : null}
+
+                  {isAddingTodo ? (
+                    <form
+                      className="mt-3 flex items-center gap-2"
+                      onSubmit={(e) => { e.preventDefault(); addTodo(); }}
+                    >
+                      <input
+                        ref={newTodoInputRef}
+                        autoFocus
+                        className="h-8 flex-1 rounded-sm border border-[rgba(244,164,98,0.24)] bg-[rgba(5,4,3,0.62)] px-3 text-[0.88rem] text-[rgba(247,221,197,0.88)] outline-none transition placeholder:text-[rgba(247,221,197,0.3)] focus:border-[rgba(255,157,0,0.48)]"
+                        onChange={(e) => setNewTodoText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Escape") setIsAddingTodo(false); }}
+                        placeholder="Enter objective..."
+                        value={newTodoText}
+                      />
+                      <button
+                        className="nlc-focus-ring h-8 rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(244,164,98,0.08)] px-3 text-[0.62rem] uppercase tracking-[0.18em] text-[var(--nlc-orange)] transition-colors hover:bg-[rgba(244,164,98,0.14)]"
+                        type="submit"
+                      >
+                        Add
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      className="nlc-focus-ring mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[var(--nlc-orange)] transition-colors hover:text-[rgba(255,208,165,0.9)]"
+                      onClick={() => setIsAddingTodo(true)}
+                      type="button"
+                    >
+                      + New Objective
+                    </button>
+                  )}
                 </div>
 
-                <ul className="mt-3 divide-y divide-[rgba(238,241,245,0.12)] border-t border-[rgba(238,241,245,0.16)]">
-                  {objectives.map((row) => (
-                    <ObjectiveItem key={row.id} row={row} />
-                  ))}
-                </ul>
-
-                <div className="mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[var(--nlc-orange)]">
-                  + New Objective
-                </div>
-              </div>
-            </section>
-
-            <section className="flex-[0.32] px-4 py-3 sm:px-5">
-              <div className="rounded-sm border border-[rgba(244,164,98,0.18)] bg-[rgba(10,7,5,0.6)] px-4 py-3.5">
-                <div className="flex items-center justify-between gap-4 border-b border-[rgba(244,164,98,0.14)] pb-2.5">
-                  <h3 className="m-0 text-[0.92rem] font-semibold uppercase tracking-[0.08em] text-[var(--nlc-orange)]">
-                    Expedition Notes
-                  </h3>
-                  <span className="text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Encrypted</span>
-                </div>
-                <textarea
-                  className="mt-3 h-20 w-full resize-none rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(5,4,3,0.62)] px-3.5 py-2.5 text-[0.88rem] leading-5 text-[rgba(247,221,197,0.88)] outline-none transition focus:border-[rgba(255,157,0,0.48)]"
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Log observations of the frost creep..."
-                  value={notes}
-                />
-                <div className="mt-3 flex items-center justify-between text-[0.58rem] uppercase tracking-[0.18em] text-[rgba(247,221,197,0.42)]">
-                  <span>Logged live</span>
-                  <span>{notes.trim() ? `${notes.length} chars` : "Encrypted"}</span>
+                {/* ── Expedition Notes ── */}
+                <div className="mt-auto rounded-sm border border-[rgba(244,164,98,0.18)] bg-[rgba(10,7,5,0.6)] px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-4 border-b border-[rgba(244,164,98,0.14)] pb-2.5">
+                    <h3 className="m-0 text-[0.92rem] font-semibold uppercase tracking-[0.08em] text-[var(--nlc-orange)]">
+                      Expedition Notes
+                    </h3>
+                    <span className="text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Encrypted</span>
+                  </div>
+                  <textarea
+                    className="mt-3 h-40 w-full resize-none rounded-sm border border-[rgba(244,164,98,0.14)] bg-[rgba(5,4,3,0.62)] px-3.5 py-2.5 text-[0.88rem] leading-5 text-[rgba(247,221,197,0.88)] outline-none transition focus:border-[rgba(255,157,0,0.48)]"
+                    onChange={(event) => setNotes(event.target.value)}
+                    placeholder="Log observations of the frost creep..."
+                    value={notes}
+                  />
+                  <div className="mt-3 flex items-center justify-between text-[0.58rem] uppercase tracking-[0.18em] text-[rgba(247,221,197,0.42)]">
+                    <span>Logged live</span>
+                    <span>{notes.trim() ? `${notes.length} chars` : "Encrypted"}</span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -598,8 +714,42 @@ export function FocusExperience({
                     <div className="mt-4 flex aspect-square w-full max-w-[14.75rem] items-center justify-center rounded-full border-[9px] border-[#0d0907] bg-[#0d0907] shadow-[0_0_30px_rgba(0,0,0,0.42)]">
                       <div className="flex aspect-square w-full max-w-[12.2rem] flex-col items-center justify-center rounded-full border border-[rgba(244,164,98,0.18)] bg-[radial-gradient(circle_at_top,rgba(244,164,98,0.06),rgba(8,6,4,0.98)_68%)] px-4 shadow-[inset_0_0_64px_rgba(244,164,98,0.03)]">
                         <div className="text-[0.62rem] uppercase tracking-[0.28em] text-[var(--nlc-muted)]">Deep Focus Cycle</div>
-                        <div className="mt-3 font-mono text-[3.35rem] font-black tracking-[-0.08em] text-[var(--nlc-orange)] drop-shadow-[0_0_20px_rgba(244,164,98,0.22)] sm:text-[3.8rem]">
-                          {formatSeconds(displaySeconds)}
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="font-mono text-[3.35rem] font-black tracking-[-0.08em] text-[var(--nlc-orange)] drop-shadow-[0_0_20px_rgba(244,164,98,0.22)] sm:text-[3.8rem]">
+                            {formatSeconds(displaySeconds)}
+                          </div>
+                          {canEditDuration ? (
+                            <div className="flex flex-col gap-1">
+                              <button
+                                aria-label="增加时长"
+                                className="nlc-focus-ring flex size-6 items-center justify-center rounded border border-[rgba(244,164,98,0.3)] bg-[rgba(244,164,98,0.06)] text-[var(--nlc-orange)] transition-colors hover:bg-[rgba(244,164,98,0.14)]"
+                                onClick={() => {
+                                  const next = Math.min((Number(selectedMinutesInput) || 0) + 5, 180);
+                                  setSelectedMinutesInput(String(next));
+                                  setSelectedMinutes(next);
+                                }}
+                                type="button"
+                              >
+                                <svg aria-hidden="true" className="size-3" viewBox="0 0 12 12" fill="currentColor">
+                                  <path d="M6 2.5 10 7.5H2Z" />
+                                </svg>
+                              </button>
+                              <button
+                                aria-label="减少时长"
+                                className="nlc-focus-ring flex size-6 items-center justify-center rounded border border-[rgba(244,164,98,0.3)] bg-[rgba(244,164,98,0.06)] text-[var(--nlc-orange)] transition-colors hover:bg-[rgba(244,164,98,0.14)]"
+                                onClick={() => {
+                                  const next = Math.max((Number(selectedMinutesInput) || 0) - 5, 1);
+                                  setSelectedMinutesInput(String(next));
+                                  setSelectedMinutes(next);
+                                }}
+                                type="button"
+                              >
+                                <svg aria-hidden="true" className="size-3" viewBox="0 0 12 12" fill="currentColor">
+                                  <path d="M6 9.5 2 4.5h8Z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
 
                         <div className="mt-5 flex items-center justify-center gap-4">
@@ -672,45 +822,6 @@ export function FocusExperience({
                   </div>
                 </div>
 
-                <div className="mt-2.5 grid gap-2.5 lg:grid-cols-[1fr_0.92fr]">
-                  <label className="block" htmlFor="focus-duration-input">
-                    <span className="block text-[0.68rem] uppercase tracking-[0.26em] text-[var(--nlc-muted)]">
-                      Duration
-                    </span>
-                    <input
-                      className="mt-2 h-10 w-full rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(10,7,5,0.76)] px-4 text-base text-[var(--nlc-text)] outline-none transition focus:border-[rgba(255,157,0,0.5)] disabled:cursor-not-allowed disabled:opacity-45"
-                      disabled={!isSessionReady || !canEditDuration}
-                      id="focus-duration-input"
-                      inputMode="numeric"
-                      min="1"
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setSelectedMinutesInput(nextValue);
-
-                        if (!nextValue.trim()) {
-                          setSelectedMinutes(null);
-                          return;
-                        }
-
-                        const parsed = Number(nextValue);
-                        setSelectedMinutes(Number.isFinite(parsed) ? parsed : null);
-                      }}
-                      placeholder="25"
-                      type="number"
-                      value={selectedMinutesInput}
-                    />
-                  </label>
-
-                  <div className="rounded-sm border border-[rgba(244,164,98,0.16)] bg-[rgba(10,7,5,0.52)] px-4 py-3 text-[0.64rem] leading-5 text-[var(--nlc-muted)]">
-                    {!isSessionReady
-                      ? "正在恢复 session 数据，恢复完成后才能启动本轮计时。"
-                      : remoteStatus === "pending"
-                        ? "输入分钟数后，第一次点击开始会调用 /api/session/start。"
-                        : remainingSeconds == null
-                          ? "这是一个已恢复的 session。先输入本轮时长，再点击继续。"
-                          : "暂停只影响本地倒计时；服务端 session 仍保持 active。"}
-                  </div>
-                </div>
 
               </div>
             </div>

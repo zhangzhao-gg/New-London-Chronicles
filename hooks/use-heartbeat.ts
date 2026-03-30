@@ -7,7 +7,9 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+import { navigateTo } from "@/lib/client-navigation";
 
 export type FocusTaskType = "collect" | "build" | "convert" | "work";
 export type FocusSessionStatus = "pending" | "active";
@@ -87,6 +89,7 @@ const HEARTBEAT_SECONDS = 10 * 60;
 const TASK_POLL_INTERVAL_MS = 30_000;
 const LOCAL_TICK_INTERVAL_MS = 250;
 const DEFAULT_PENDING_FOCUS_MINUTES = 25;
+const SESSION_ENDED_KEY_PREFIX = "nlc:session-ended:";
 
 function getStorageKey(sessionId: string) {
   return `nlc:focus-state:${sessionId}`;
@@ -477,10 +480,40 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     };
   }, [countdownEndsAtMs, isPaused, remoteStatus, selectedMinutes, session]);
 
+  /* ─── 跨 tab 结算通知：另一个窗口结束同一 session 时，当前 tab 感知并跳转 ─── */
+
+  useEffect(() => {
+    if (!session) return;
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== `${SESSION_ENDED_KEY_PREFIX}${session.id}`) return;
+      if (endingRef.current) return;
+
+      endingRef.current = true;
+      setCountdownEndsAtMs(null);
+      setIsPaused(true);
+      setIsEnding(true);
+      clearPersistedState(session.id);
+      navigateTo("/city", { replace: true });
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [session]);
+
   async function finishSession(endReason: FocusClientEndReason) {
     if (!session || endingRef.current) {
       return;
     }
+
+    /* 跨 tab 防重：如果另一个 tab 已经结算过，直接跳走 */
+    try {
+      if (window.localStorage.getItem(`${SESSION_ENDED_KEY_PREFIX}${session.id}`)) {
+        endingRef.current = true;
+        navigateTo("/city", { replace: true });
+        return;
+      }
+    } catch {}
 
     endingRef.current = true;
     setCountdownEndsAtMs(null);
@@ -495,6 +528,11 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
       if (!mountedRef.current) {
         return;
       }
+
+      /* 广播结算信号给其他 tab */
+      try {
+        window.localStorage.setItem(`${SESSION_ENDED_KEY_PREFIX}${session.id}`, String(Date.now()));
+      } catch {}
 
       setRemoteStatus("ended");
       setErrorMessage(null);

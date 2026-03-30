@@ -212,3 +212,35 @@ button {
   white-space: nowrap;
   border: 0;
 }
+
+/* ─── 模态框抖动动画 ─── */
+
+@keyframes nlc-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-4px); }
+  30%, 70% { transform: translateX(4px); }
+}
+
+.nlc-shake {
+  animation: nlc-shake 0.5s ease-in-out;
+}
+
+/* ─── Toast 入场/退场 ─── */
+
+@keyframes nlc-toast-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nlc-toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-12px); }
+}
+
+.nlc-toast-enter {
+  animation: nlc-toast-in 0.28s ease-out;
+}
+
+.nlc-toast-exit {
+  animation: nlc-toast-out 0.22s ease-in forwards;
+}

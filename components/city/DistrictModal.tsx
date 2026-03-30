@@ -7,7 +7,8 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -208,11 +209,51 @@ function formatDisabledReason(task: TaskListItem) {
   return null;
 }
 
+function ConflictToast({ message, onDone }: { message: string; onDone: () => void }) {
+  const [exiting, setExiting] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => setExiting(true), 2800);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    if (!exiting) return;
+    const id = setTimeout(onDone, 240);
+    return () => clearTimeout(id);
+  }, [exiting, onDone]);
+
+  return createPortal(
+    <div
+      className={joinClasses(
+        "fixed right-4 top-4 z-[9999] max-w-sm rounded-sm border border-amber-500/40 bg-[rgba(8,5,4,0.94)] px-5 py-3.5 text-[0.74rem] leading-5 text-amber-100 shadow-[0_18px_36px_rgba(120,53,15,0.32)] backdrop-blur-sm sm:right-6 sm:top-5",
+        exiting ? "nlc-toast-exit" : "nlc-toast-enter",
+      )}
+      role="alert"
+    >
+      {message}
+    </div>,
+    document.body,
+  );
+}
+
 export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isJoiningTaskKey, setIsJoiningTaskKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
+  const [conflictToast, setConflictToast] = useState<string | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
+  const shakeTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const dismissToast = useCallback(() => setConflictToast(null), []);
+
+  function triggerShake() {
+    setIsShaking(true);
+    if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+    shakeTimerRef.current = setTimeout(() => setIsShaking(false), 520);
+  }
 
   useEffect(() => {
     if (!open) {
@@ -267,7 +308,9 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
       navigateTo(payload.redirectTo ?? `/focus?sessionId=${payload.sessionId}`);
     } catch (error) {
       if (error instanceof DistrictModalApiError && error.code === "CONFLICT") {
-        setErrorMessage("你已经有工作了，请先完成当前专注任务。");
+        const msg = "你已经有工作了，请先完成当前专注任务。";
+        setConflictToast(msg);
+        triggerShake();
         return;
       }
 
@@ -278,8 +321,11 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
   }
 
   return (
+    <>
+    {conflictToast ? <ConflictToast message={conflictToast} onDone={dismissToast} /> : null}
     <Modal
       description={district ? `${district.label} · ${copy?.subtitle ?? ""}` : "请选择一个区块后查看可用任务。"}
+      panelClassName={isShaking ? "nlc-shake" : undefined}
       footer={
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs uppercase tracking-[0.2em] text-[var(--nlc-muted)]">
@@ -401,6 +447,7 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
         </div>
       )}
     </Modal>
+    </>
   );
 }
 

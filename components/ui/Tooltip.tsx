@@ -18,6 +18,7 @@ export type TooltipProps = {
   className?: string;
   contentClassName?: string;
   disabled?: boolean;
+  style?: React.CSSProperties;
 };
 
 const positionClasses: Record<TooltipSide, string> = {
@@ -46,6 +47,7 @@ export function Tooltip({
   contentClassName,
   disabled = false,
   side = "top",
+  style,
 }: TooltipProps) {
   const [open, setOpen] = useState(false);
   const tooltipId = useId();
@@ -61,8 +63,9 @@ export function Tooltip({
       onFocus={() => setOpen(true)}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
+      style={style}
     >
-      <span aria-describedby={open ? tooltipId : undefined} className="inline-flex">
+      <span aria-describedby={open ? tooltipId : undefined} className="inline-flex h-full w-full">
         {children}
       </span>
       <span
