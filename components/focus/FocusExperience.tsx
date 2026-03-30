@@ -54,19 +54,21 @@ const ambientOptions: AmbientOption[] = [
   { id: "rest", label: "Rest", hint: "小雪" },
 ];
 
-const TODOS_STORAGE_KEY = "nlc:focus-todos";
+function todosKey(username: string) {
+  return `nlc:focus-todos:${username}`;
+}
 
-function loadTodos(): TodoItem[] {
+function loadTodos(key: string): TodoItem[] {
   try {
-    const raw = localStorage.getItem(TODOS_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as TodoItem[]) : [];
   } catch {
     return [];
   }
 }
 
-function saveTodos(todos: TodoItem[]) {
-  localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos));
+function saveTodos(key: string, todos: TodoItem[]) {
+  localStorage.setItem(key, JSON.stringify(todos));
 }
 
 function joinClasses(...values: Array<string | false | null | undefined>) {
@@ -291,19 +293,23 @@ function SystemNotice({
   tone?: "default" | "error" | "warn";
 }) {
   const [exiting, setExiting] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const onDismissRef = useRef(onDismiss);
 
   useEffect(() => {
-    if (!onDismiss) return;
-    timerRef.current = setTimeout(() => setExiting(true), 2800);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    onDismissRef.current = onDismiss;
   }, [onDismiss]);
 
   useEffect(() => {
-    if (!exiting || !onDismiss) return;
-    const id = setTimeout(onDismiss, 220);
+    if (!onDismissRef.current) return;
+    const id = setTimeout(() => setExiting(true), 2800);
     return () => clearTimeout(id);
-  }, [exiting, onDismiss]);
+  }, []);
+
+  useEffect(() => {
+    if (!exiting) return;
+    const id = setTimeout(() => onDismissRef.current?.(), 220);
+    return () => clearTimeout(id);
+  }, [exiting]);
 
   const toneClassName =
     tone === "error"
@@ -421,9 +427,11 @@ export function FocusExperience({
     };
   }, [initialSessionId]);
 
+  const storageKey = todosKey(initialUser.username);
+
   useEffect(() => {
-    setTodos(loadTodos());
-  }, []);
+    setTodos(loadTodos(storageKey));
+  }, [storageKey]);
 
   const {
     cycleHeartbeatCount,
@@ -459,8 +467,8 @@ export function FocusExperience({
 
   const updateTodos = useCallback((next: TodoItem[]) => {
     setTodos(next);
-    saveTodos(next);
-  }, []);
+    saveTodos(storageKey, next);
+  }, [storageKey]);
 
   const addTodo = useCallback(() => {
     const text = newTodoText.trim();
