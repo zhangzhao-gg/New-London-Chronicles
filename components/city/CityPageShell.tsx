@@ -7,9 +7,19 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import {
+  BottomIconDistricts,
+  BottomIconFocus,
+  GlobeGlyph,
+  NavIconAlerts,
+  NavIconBuild,
+  NavIconMap,
+  NavIconPersonnel,
+  SettingsGlyph,
+} from "@/components/city/CityIcons";
 import DistrictModal from "@/components/city/DistrictModal";
 import Button from "@/components/ui/Button";
 import ResourceIcon, { type ResourceKind } from "@/components/ui/ResourceIcon";
@@ -22,6 +32,7 @@ import {
   type DistrictStatus,
 } from "@/hooks/use-city";
 import type { UserDto } from "@/lib/auth";
+import { t, getSavedLocale, saveLocale, LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 
 const DISTRICT_CLIP_PATH = "polygon(5% 0%, 95% 0%, 100% 20%, 100% 80%, 95% 100%, 5% 100%, 0% 80%, 0% 20%)";
 const MAP_BACKGROUND_URL =
@@ -35,8 +46,8 @@ type ResourceRow = {
 };
 
 type DistrictVisual = {
-  badge: string;
-  englishLabel: string;
+  badgeKey: string;
+  labelKey: string;
   icon: string;
   layout: "corner-left" | "corner-right" | "center";
   positionStyle: React.CSSProperties;
@@ -45,22 +56,22 @@ type DistrictVisual = {
   tooltipSide: TooltipSide;
 };
 
-const resourceRailLabels: Record<ResourceKind, string> = {
-  coal: "Coal",
-  wood: "Wood",
-  steel: "Steel",
-  rawFood: "Raw Food",
-  foodSupply: "Food Supply",
-  steamCore: "Steam Core",
-  temperature: "Temperature",
+const resourceI18nKeys: Record<ResourceKind, string> = {
+  coal: "res.coal",
+  wood: "res.wood",
+  steel: "res.steel",
+  rawFood: "res.rawFood",
+  foodSupply: "res.foodSupply",
+  steamCore: "res.steamCore",
+  temperature: "res.temperature",
 };
 
 /* ─── 区块定位直接用 style 驱动，绕开 Tailwind 百分比类名扫描不确定性 ─── */
 
 const districtVisuals: Record<DistrictKey, DistrictVisual> = {
   resource: {
-    badge: "工业资源区",
-    englishLabel: "Industrial Resource Zone",
+    badgeKey: "district.resource.badge",
+    labelKey: "district.resource.label",
     icon: "⚙",
     layout: "corner-left",
     positionStyle: { top: "20%", left: "30%", width: "14rem", height: "8rem" },
@@ -69,8 +80,8 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     tooltipSide: "bottom",
   },
   residential: {
-    badge: "居民聚居地",
-    englishLabel: "Residential Settlement",
+    badgeKey: "district.residential.badge",
+    labelKey: "district.residential.label",
     icon: "⌂",
     layout: "corner-right",
     positionStyle: { bottom: "20%", right: "25%", width: "16rem", height: "10rem" },
@@ -80,8 +91,8 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     tooltipSide: "top",
   },
   medical: {
-    badge: "紧急医疗站",
-    englishLabel: "Emergency Medical Post",
+    badgeKey: "district.medical.badge",
+    labelKey: "district.medical.label",
     icon: "✚",
     layout: "center",
     positionStyle: { top: "28%", right: "22%", width: "10rem", height: "10rem" },
@@ -90,8 +101,8 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     tooltipSide: "left",
   },
   food: {
-    badge: "食物区",
-    englishLabel: "Food Production",
+    badgeKey: "district.food.badge",
+    labelKey: "district.food.label",
     icon: "❈",
     layout: "center",
     positionStyle: { bottom: "40%", left: "10%", width: "10rem", height: "6rem" },
@@ -100,8 +111,8 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
     tooltipSide: "top",
   },
   exploration: {
-    badge: "哨站",
-    englishLabel: "Outpost",
+    badgeKey: "district.exploration.badge",
+    labelKey: "district.exploration.label",
     icon: "◈",
     layout: "center",
     positionStyle: { top: "10%", right: "40%", width: "8rem", height: "5rem" },
@@ -112,32 +123,11 @@ const districtVisuals: Record<DistrictKey, DistrictVisual> = {
 };
 
 const navItems = [
-  { label: "Map", icon: "⌘", active: true },
-  { label: "Build", icon: "▣", active: false },
-  { label: "Personnel", icon: "◫", active: false },
-  { label: "Alerts", icon: "⚠", active: false },
+  { labelKey: "nav.map", icon: NavIconMap, active: true },
+  { labelKey: "nav.build", icon: NavIconBuild, active: false },
+  { labelKey: "nav.personnel", icon: NavIconPersonnel, active: false },
+  { labelKey: "nav.alerts", icon: NavIconAlerts, active: false },
 ] as const;
-
-function SettingsGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M10 3h4l.7 2.3 2.2.9 2.1-1.1 2 3.5-1.8 1.5.2 2.4 1.8 1.5-2 3.5-2.1-1.1-2.2.9L14 21h-4l-.7-2.3-2.2-.9-2.1 1.1-2-3.5 1.8-1.5-.2-2.4L2.8 9.1l2-3.5 2.1 1.1 2.2-.9L10 3Z" />
-      <circle cx="12" cy="12" r="2.8" />
-    </svg>
-  );
-}
-
-function GlobeGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M3.8 12h16.4" />
-      <path d="M12 3.5c2.4 2.2 3.8 5.2 3.8 8.5S14.4 18.3 12 20.5" />
-      <path d="M12 3.5C9.6 5.7 8.2 8.7 8.2 12s1.4 6.3 3.8 8.5" />
-    </svg>
-  );
-}
-
 
 function joinClasses(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -146,6 +136,13 @@ function joinClasses(...values: Array<string | false | null | undefined>) {
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
+
+const statusI18nKeys: Record<DistrictStatus, string> = {
+  "可采集": "status.collectible",
+  "建造进行中": "status.buildingInProgress",
+  "资源不足": "status.insufficientResources",
+  "无进行中任务": "status.noActiveTask",
+};
 
 function statusBadgeClassName(status: DistrictStatus) {
   switch (status) {
@@ -189,30 +186,43 @@ function resourceRows(city: CitySnapshot | null): ResourceRow[] {
 function DistrictZone({
   active,
   district,
+  locale,
   onActivate,
   onOpen,
 }: {
   active: boolean;
   district: CityDistrict;
+  locale: Locale;
   onActivate: (districtKey: DistrictKey) => void;
   onOpen: (districtKey: DistrictKey) => void;
 }) {
   const visual = districtVisuals[district.district];
-  const zoneLabel = `${visual.badge} (${visual.englishLabel})`;
-  const zoneFooter = district.workingCount > 0 ? `Workers ${formatNumber(district.workingCount)}` : "No active crews";
+  const zoneBadge = t(visual.badgeKey, locale);
+  const zoneLabel = t(visual.labelKey, locale);
+  const zoneFooter = district.workingCount > 0
+    ? `${t("tooltip.workers", locale)}${formatNumber(district.workingCount)}`
+    : t("tooltip.noCrews", locale);
 
   return (
     <Tooltip
       className="!absolute"
       style={visual.positionStyle}
       content={
-        <div className="space-y-1.5">
-          <div className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-[var(--nlc-orange)]">
-            {district.label}
+        <div className="space-y-2">
+          <div>
+            <div className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-[var(--nlc-orange)]">
+              {zoneBadge}
+            </div>
+            <div className="text-[11px] text-slate-400">{zoneLabel}</div>
           </div>
-          <div>{visual.englishLabel}</div>
-          <div>当前状态：{district.status}</div>
-          <div>正在此处工作的居民：{district.workingCount}</div>
+          <div className="flex items-center gap-2">
+            <span className={joinClasses("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", statusBadgeClassName(district.status))}>
+              {t(statusI18nKeys[district.status], locale)}
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-300">
+            {t("tooltip.workers", locale)}<span className="font-mono font-bold text-white">{formatNumber(district.workingCount)}</span>
+          </div>
         </div>
       }
       side={visual.tooltipSide}
@@ -266,7 +276,7 @@ function DistrictZone({
 
           {active ? (
             <div className="absolute inset-x-3 bottom-3 rounded-full border border-[rgba(255,157,0,0.16)] bg-[rgba(0,0,0,0.28)] px-2 py-1 text-center text-[9px] uppercase tracking-[0.16em] text-[rgba(255,221,190,0.88)]">
-              {district.status}
+              {t(statusI18nKeys[district.status], locale)}
             </div>
           ) : null}
         </div>
@@ -301,16 +311,43 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     language,
     setActionMessage,
     setIsTaskModalOpen,
+    setLanguage,
     toggleAutoAssign,
     user,
   } = useCity(initialUser, initialCity);
 
   const [activeDistrictKey, setActiveDistrictKey] = useState<DistrictKey | null>(null);
   const [hasHandledOpenTasksQuery, setHasHandledOpenTasksQuery] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const locale = (language === "en-US" ? "en-US" : "zh-CN") as Locale;
+
+  const langMenuRef = useRef<HTMLDivElement>(null);
+
+  /* ─── 点击外部关闭语言菜单 ─── */
+  useEffect(() => {
+    if (!showLangMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setShowLangMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showLangMenu]);
+
+  /* ─── 首次挂载时从 localStorage 恢复语言偏好 ─── */
+  useEffect(() => {
+    const saved = getSavedLocale();
+    if (saved !== locale) {
+      setLanguage(saved);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resources = useMemo(() => resourceRows(city), [city]);
   const districts = city?.districts ?? [];
-  const districtTelemetryMessage = city ? "District telemetry unavailable" : "Synchronizing city telemetry";
+  const districtTelemetryMessage = city ? t("map.telemetryUnavailable", locale) : t("map.telemetrySyncing", locale);
 
   useEffect(() => {
     if (!districts.length) {
@@ -357,22 +394,22 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 ⚙
               </div>
               <div>
-                <h1 className="m-0 text-xl font-bold uppercase tracking-[0.14em] text-[var(--nlc-orange)]">New London</h1>
+                <h1 className="m-0 text-xl font-bold uppercase tracking-[0.14em] text-[var(--nlc-orange)]">{t("header.title", locale)}</h1>
                 <p className="m-0 text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--nlc-muted)]">
-                  Generator Status: Nominal
+                  {t("header.subtitle", locale)}
                 </p>
               </div>
             </div>
 
             <nav className="hidden items-center gap-1 border-l border-[rgba(244,164,98,0.18)] pl-6 lg:flex" aria-label="Primary">
               <button className="rounded px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--nlc-orange)] transition-colors hover:bg-[rgba(244,164,98,0.1)]" type="button">
-                Logistics
+                {t("nav.logistics", locale)}
               </button>
               <button className="px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-400 transition-colors hover:text-[var(--nlc-orange)]" type="button">
-                Council
+                {t("nav.council", locale)}
               </button>
               <button className="px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-400 transition-colors hover:text-[var(--nlc-orange)]" type="button">
-                Archives
+                {t("nav.archives", locale)}
               </button>
             </nav>
           </div>
@@ -386,14 +423,36 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
               >
                 <SettingsGlyph />
               </button>
-              <button
-                aria-label="Language"
-                className="relative rounded p-2 text-slate-400 transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
-                type="button"
-              >
-                <GlobeGlyph />
-                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[var(--nlc-orange)]" />
-              </button>
+              <div className="relative" ref={langMenuRef}>
+                <button
+                  aria-label={t("header.language", locale)}
+                  className="relative rounded p-2 text-slate-400 transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
+                  onClick={() => setShowLangMenu((v) => !v)}
+                  type="button"
+                >
+                  <GlobeGlyph />
+                  <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[var(--nlc-orange)]" />
+                </button>
+                {showLangMenu ? (
+                  <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-md border border-[rgba(244,164,98,0.2)] bg-[rgba(16,11,8,0.96)] py-1 shadow-xl backdrop-blur-md">
+                    {LOCALES.map((loc) => (
+                      <button
+                        className={joinClasses(
+                          "block w-full px-4 py-2 text-left text-xs transition-colors",
+                          loc === locale
+                            ? "bg-[rgba(244,164,98,0.12)] font-bold text-[var(--nlc-orange)]"
+                            : "text-slate-400 hover:bg-[rgba(244,164,98,0.06)] hover:text-[var(--nlc-orange)]",
+                        )}
+                        key={loc}
+                        onClick={() => { setLanguage(loc); saveLocale(loc as Locale); setShowLangMenu(false); }}
+                        type="button"
+                      >
+                        {LOCALE_LABELS[loc]}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <div className="h-10 w-10 overflow-hidden rounded border-2 border-[rgba(244,164,98,0.4)] p-0.5">
@@ -423,7 +482,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                     item.resource === "temperature" ? "text-[rgba(255,157,0,0.62)]" : "text-slate-500",
                   )}
                 >
-                  {resourceRailLabels[item.resource]}
+                  {t(resourceI18nKeys[item.resource], locale)}
                 </p>
                 <p
                   className={joinClasses(
@@ -451,41 +510,49 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                       ? "border-[rgba(244,164,98,0.24)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)]"
                       : "border-transparent text-slate-500 hover:border-[rgba(244,164,98,0.16)] hover:bg-[rgba(244,164,98,0.04)] hover:text-[var(--nlc-orange)]",
                   )}
-                  key={item.label}
+                  key={item.labelKey}
                   type="button"
                 >
-                  <span className="text-[0.95rem] leading-none">{item.icon}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{item.label}</span>
+                  <item.icon />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{t(item.labelKey, locale)}</span>
                 </button>
               ))}
             </div>
 
             <div className="space-y-4 px-1 lg:px-0">
               <div className="rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.05)] p-3.5">
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Citizen Hope</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800" />
-                <p className="mb-0 mt-2 text-[10px] text-[var(--nlc-muted)]">Telemetry unavailable</p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">{t("sidebar.citizenHope", locale)}</p>
+                  <span className="text-[10px] font-bold tabular-nums text-[var(--nlc-orange)]">65%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full w-[65%] rounded-full bg-[var(--nlc-orange)] shadow-[0_0_8px_rgba(244,164,98,0.5)] transition-all duration-700" />
+                </div>
               </div>
 
               <div className="rounded-sm border border-red-900/30 bg-red-950/20 p-3.5">
-                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-400/70">Discontent</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800" />
-                <p className="mb-0 mt-2 text-[10px] text-red-200/70">Telemetry unavailable</p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-red-400/70">{t("sidebar.discontent", locale)}</p>
+                  <span className="text-[10px] font-bold tabular-nums text-red-400">28%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full w-[28%] rounded-full bg-red-600 transition-all duration-700" />
+                </div>
               </div>
 
               <div>
                 <div className="mb-2 flex items-center justify-between border-b border-[rgba(244,164,98,0.12)] px-2 pb-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--nlc-orange)]">City Log</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--nlc-orange)]">{t("sidebar.cityLog", locale)}</span>
                   <span className="text-[10px] text-[var(--nlc-muted)]">{city?.logs.length ?? 0}</span>
                 </div>
                 <div className="max-h-52 space-y-2 overflow-y-auto rounded-sm border border-[rgba(244,164,98,0.08)] bg-black/20 p-2 lg:max-h-[280px]">
                   {city?.logs.length ? (
                     city.logs.slice(0, 8).map((entry) => (
                       <div className="flex gap-2" key={entry.id}>
-                        <span className="whitespace-nowrap font-mono text-[9px] text-[var(--nlc-orange)]/55">
+                        <span className="whitespace-nowrap font-mono text-[11px] text-[var(--nlc-orange)]/55">
                           {formatLogTimestamp(entry.createdAt, language)}
                         </span>
-                        <p className="m-0 text-[10px] leading-tight text-slate-400">
+                        <p className="m-0 text-xs leading-snug text-slate-400">
                           <span className="text-[var(--nlc-orange)]">{entry.userLabel}</span>
                           <span className="mx-1 text-slate-600">·</span>
                           {entry.actionDesc}
@@ -493,7 +560,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                       </div>
                     ))
                   ) : (
-                    <p className="m-0 text-[10px] leading-5 text-[var(--nlc-muted)]">City telemetry is synchronizing.</p>
+                    <p className="m-0 text-[10px] leading-5 text-[var(--nlc-muted)]">{t("sidebar.telemetrySync", locale)}</p>
                   )}
                 </div>
               </div>
@@ -507,13 +574,13 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_20%,rgba(0,0,0,0.64)_100%)]" />
 
           <div className="absolute left-5 top-5 z-10 rounded-sm border border-[rgba(244,164,98,0.16)] bg-[rgba(10,7,5,0.75)] px-3.5 py-2.5 backdrop-blur-sm">
-            <div className="text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">Great Frost</div>
-            <div className="mt-1 text-[0.82rem] uppercase tracking-[0.16em] text-[var(--nlc-orange)]">District tactical view</div>
+            <div className="text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">{t("map.environmentLabel", locale)}</div>
+            <div className="mt-1 text-[0.82rem] uppercase tracking-[0.16em] text-[var(--nlc-orange)]">{t("map.viewType", locale)}</div>
           </div>
 
           <div className="absolute left-5 right-5 top-20 z-10 space-y-2">
-            {isLoading ? <StatusNotice>Synchronizing city telemetry...</StatusNotice> : null}
-            {isRefreshing ? <StatusNotice>Polling `/api/city` for fresh district state.</StatusNotice> : null}
+            {isLoading ? <StatusNotice>{t("map.syncMessage", locale)}</StatusNotice> : null}
+            {isRefreshing ? <StatusNotice>{t("map.pollingMessage", locale)}</StatusNotice> : null}
             {!isLoading && !districts.length ? <StatusNotice>{districtTelemetryMessage}</StatusNotice> : null}
             {errorMessage ? <StatusNotice tone="error">{errorMessage}</StatusNotice> : null}
             {actionMessage ? <StatusNotice tone="warn">{actionMessage}</StatusNotice> : null}
@@ -522,14 +589,14 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-[rgba(255,157,0,0.4)] bg-[rgba(255,157,0,0.08)] shadow-[0_0_40px_rgba(255,157,0,0.18)] transition hover:bg-[rgba(255,157,0,0.14)] md:h-40 md:w-40"
-              onClick={() => setActionMessage("Core Energy Hub is informational in M08.")}
+              onClick={() => setActionMessage(t("district.coreHub.info", locale))}
               type="button"
             >
               <div className="absolute inset-3 rounded-full border border-[rgba(255,157,0,0.22)] bg-[rgba(255,157,0,0.1)] animate-pulse" />
               <div className="relative px-4 text-center text-[var(--nlc-amber)]">
                 <div className="text-3xl md:text-4xl">✦</div>
-                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.22em]">核心能量枢纽</div>
-                <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-[rgba(255,208,165,0.72)]">Core Energy Hub</div>
+                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.22em]">{t("district.coreHub.badge", locale)}</div>
+                <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-[rgba(255,208,165,0.72)]">{t("district.coreHub.label", locale)}</div>
               </div>
             </button>
 
@@ -538,6 +605,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 active={activeDistrict?.district === district.district}
                 district={district}
                 key={district.district}
+                locale={locale}
                 onActivate={setActiveDistrictKey}
                 onOpen={(districtKey) => {
                   setActiveDistrictKey(districtKey);
@@ -550,33 +618,35 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
           <div className="absolute right-8 top-8 z-10 hidden w-64 border border-[rgba(244,164,98,0.22)] bg-[rgba(0,0,0,0.6)] p-3.5 backdrop-blur-md xl:block">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h3 className="m-0 text-sm font-black uppercase tracking-[0.18em] text-[var(--nlc-orange)]">District Overview</h3>
-                <p className="m-0 mt-1 text-[10px] font-mono text-slate-400">ID: 00-412-X</p>
+                <h3 className="m-0 text-sm font-black uppercase tracking-[0.18em] text-[var(--nlc-orange)]">{t("overview.title", locale)}</h3>
+                <p className="m-0 mt-1 text-[10px] font-mono text-slate-400">{t("overview.id", locale)}</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="rounded border border-[rgba(244,164,98,0.12)] bg-[rgba(244,164,98,0.05)] p-3">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--nlc-muted)]">Selected District</p>
-                <p className="mt-2 text-base font-semibold text-slate-100">{activeDistrict?.label ?? "No district selected"}</p>
+                <p className="m-0 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--nlc-muted)]">{t("overview.selectedDistrict", locale)}</p>
+                <p className="mt-2 text-base font-semibold text-slate-100">
+                  {activeDistrict ? t(districtVisuals[activeDistrict.district].labelKey, locale) : t("overview.noDistrictSelected", locale)}
+                </p>
                 <p className="m-0 mt-1 text-xs text-[var(--nlc-muted)]">
-                  {activeDistrictVisual?.englishLabel ?? "Move across the city map to inspect districts."}
+                  {activeDistrictVisual ? t(activeDistrictVisual.labelKey, locale) : t("overview.inspectHint", locale)}
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/70">Workers {formatNumber(activeDistrict?.workingCount ?? 0)}</span>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/70">{t("overview.workers", locale)} {formatNumber(activeDistrict?.workingCount ?? 0)}</span>
                   {activeDistrict ? (
                     <span className={joinClasses("rounded-full border px-2.5 py-1 text-[0.58rem] uppercase tracking-[0.16em]", statusBadgeClassName(activeDistrict.status))}>
-                      {activeDistrict.status}
+                      {t(statusI18nKeys[activeDistrict.status], locale)}
                     </span>
                   ) : null}
                 </div>
               </div>
 
               <div className="rounded border border-red-900/20 bg-red-950/20 p-3">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-[0.18em] text-red-300/80">Health Status</p>
+                <p className="m-0 text-[10px] font-bold uppercase tracking-[0.18em] text-red-300/80">{t("overview.healthStatus", locale)}</p>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="text-red-500">✚</span>
-                  <span className="text-sm text-red-200">{city?.healthStatus ?? "Critical Cold Exposure"}</span>
+                  <span className="text-sm text-red-200">{city?.healthStatus ?? t("overview.healthDefault", locale)}</span>
                 </div>
               </div>
             </div>
@@ -588,7 +658,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 <div className="h-6 w-6 rounded-full border border-[var(--nlc-orange)] bg-slate-600" />
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--nlc-muted)]">
-                Law: {city?.currentPolicyPlaceholder ?? "No active policy"}
+                {t("overview.policyLabel", locale)} {city?.currentPolicyPlaceholder ?? t("overview.noPolicy", locale)}
               </span>
             </div>
           </div>
@@ -600,8 +670,8 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 className="flex flex-1 flex-col items-center justify-center border-b-2 border-[var(--nlc-orange)] bg-[rgba(244,164,98,0.1)] py-2.5 text-[var(--nlc-orange)] transition-colors"
                 type="button"
               >
-                <span className="text-base leading-none">⌘</span>
-                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em]">Districts</span>
+                <BottomIconDistricts />
+                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em]">{t("bottom.districts", locale)}</span>
               </button>
               <button
                 className={joinClasses(
@@ -614,8 +684,8 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                 onClick={() => void focus()}
                 type="button"
               >
-                <span className="text-base leading-none">◎</span>
-                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em]">{isAssigning ? "Assigning" : "Focus"}</span>
+                <BottomIconFocus />
+                <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em]">{isAssigning ? t("bottom.assigning", locale) : t("bottom.focus", locale)}</span>
               </button>
             </div>
 
@@ -626,9 +696,9 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                     <img alt="Administrator portrait" className="h-full w-full rounded-sm object-cover" src={ADMIN_AVATAR_URL} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="m-0 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--nlc-orange)]">Captain&apos;s Log</p>
-                    <h4 className="m-0 mt-1 truncate text-sm font-bold text-slate-100">城市管理者：{user.username}</h4>
-                    <p className="m-0 mt-1 text-[10px] italic text-slate-400">City Administrator status synchronized</p>
+                    <p className="m-0 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--nlc-orange)]">{t("bottom.captainLog", locale)}</p>
+                    <h4 className="m-0 mt-1 truncate text-sm font-bold text-slate-100">{t("bottom.cityAdmin", locale)}{user.username}</h4>
+                    <p className="m-0 mt-1 text-[10px] italic text-slate-400">{t("bottom.adminSync", locale)}</p>
                   </div>
                 </div>
 
@@ -645,12 +715,12 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
                       {user.hungerStatus}
                     </span>
                     <span className="rounded-full border border-[rgba(244,164,98,0.18)] px-2 py-1 uppercase tracking-[0.16em] text-white/70">
-                      Online {formatNumber(city?.onlineCount ?? 0)}
+                      {t("bottom.online", locale)} {formatNumber(city?.onlineCount ?? 0)}
                     </span>
                   </div>
 
                   <button
-                    aria-label="Auto assign"
+                    aria-label={t("bottom.autoAssign", locale)}
                     aria-checked={user.autoAssign}
                     className={joinClasses(
                       "relative inline-flex h-8 w-16 items-center rounded-full border transition",

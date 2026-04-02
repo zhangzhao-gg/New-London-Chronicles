@@ -34,7 +34,7 @@ export default async function FocusPage({
   const requestedSessionId = typeof resolvedSearchParams?.sessionId === "string" ? resolvedSearchParams.sessionId : null;
 
   if (!session) {
-    redirect("/");
+    redirect("/login");
   }
 
   return <FocusExperience initialSessionId={requestedSessionId} initialUser={session.user} />;
