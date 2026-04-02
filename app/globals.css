@@ -311,3 +311,16 @@ button {
 .nlc-loading-dots {
   animation: nlc-progress-pulse 1.5s ease-in-out infinite;
 }
+
+/* ─── 无障碍：减弱动画偏好 ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  .nlc-focus-overlay { animation: none; }
+  .nlc-gear-main,
+  .nlc-gear-secondary { animation: none; }
+  .nlc-worker-arm { animation: none; transform: none; }
+  .nlc-steam-particle,
+  .nlc-steam-particle-delayed,
+  .nlc-steam-particle-slow { animation: none; opacity: 0; }
+  .nlc-loading-dots { animation: none; opacity: 0.7; }
+}

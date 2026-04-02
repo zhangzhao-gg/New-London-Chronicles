@@ -20,13 +20,19 @@ const STORAGE_KEY = "nlc:locale";
 
 export function getSavedLocale(): Locale {
   if (typeof window === "undefined") return "zh-CN";
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === "en-US" ? "en-US" : "zh-CN";
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === "en-US" ? "en-US" : "zh-CN";
+  } catch {
+    return "zh-CN";
+  }
 }
 
 export function saveLocale(locale: Locale) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, locale);
+  try {
+    localStorage.setItem(STORAGE_KEY, locale);
+  } catch { /* storage blocked — ignore */ }
 }
 
 /* ─── 字典 ─── */
