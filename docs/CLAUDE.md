@@ -9,6 +9,7 @@
 `03-api-contracts.md`: API 契约，定义认证、城市、任务、会话、日志与内部 cron 接口的请求响应。  
 `04-modules.md`: 模块规格，定义 M01-M11 的交付物、依赖与并行批次。  
 `05-deployment.md`: 部署文档，定义 pm2、nginx、crontab、RLS 与验收清单。  
+`06-agent-strategy.md`: AI agent 建造策略，记录重构变更、agent 调用流程与 2D 环形地理系统规划。  
 `CLAUDE.md`: docs 目录地图，约束拆分文档的职责边界与维护协议。  
 
 法则
