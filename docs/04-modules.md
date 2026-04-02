@@ -74,17 +74,17 @@
   - 若 `coalesce(last_heartbeat_at, started_at) < now() - interval '12 hours'`，下一次读到 session 时强制 `timeout`
 - 依赖：M01、M02
 
-## M05 — Cron 任务策略脚本
+## M05 — 城市运维与建造指令
 
-- 交付物：`scripts/task-strategy.ts`、`app/api/internal/city/upkeep/route.ts`、`lib/cron.ts`
+- 交付物：`app/api/internal/city/upkeep/route.ts`、`app/api/tasks/strategy/route.ts`、`lib/cron.ts`
 - 输入：`city_resources`、`task_templates`、`task_instances`、`users`
 - 输出：
-  - 每分钟执行一次的建造实例补位逻辑
-  - 每日执行一次的城市日常消耗接口
+  - `POST /api/internal/city/upkeep`：每日执行一次的城市日常消耗（cron 触发）
+  - `POST /api/tasks/strategy`：建造指令接口，接受 `{ templateCode, slotId }`，由外部 AI agent 按需调用
 - 规则：
   - 采集类不创建实例
   - 转化类不创建实例
-  - 每个建造模板最多 `2` 个进行中实例
+  - 每个建造模板并发上限由 `task_templates.max_concurrent_instances` 控制
   - 资源不足时不创建建造实例，不做负库存
   - `food_supply` 不足固定按 `food_supply = 0` 判定
 - 决策顺序固定：

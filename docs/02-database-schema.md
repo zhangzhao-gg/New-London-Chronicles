@@ -237,8 +237,8 @@ insert into public.city_resources (
 - `rpc_session_heartbeat(p_user_id uuid, p_session_id uuid)`
 - `rpc_end_session(p_user_id uuid, p_session_id uuid, p_end_reason text default null)`
 - `rpc_assign_next_task(p_user_id uuid) returns jsonb`
-- `rpc_task_strategy_tick() returns jsonb`
-- `rpc_daily_city_upkeep() returns jsonb`
+- ~~`rpc_task_strategy_tick()`~~ — 已移除，建造补位改由 `POST /api/tasks/strategy` 在应用层执行
+- ~~`rpc_daily_city_upkeep()`~~ — 已移除，城市消耗改由 `lib/cron.ts` 应用层 fallback 执行
 
 `rpc_session_heartbeat` 固定返回：
 

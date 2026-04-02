@@ -52,9 +52,10 @@ server {
 
 ```cron
 CRON_TZ=Asia/Shanghai
-* * * * * cd /srv/new-london-chronicles && /usr/bin/env node -r ts-node/register scripts/task-strategy.ts >> /var/log/nlc-task-strategy.log 2>&1
 5 0 * * * curl -s -X POST http://127.0.0.1:3000/api/internal/city/upkeep -H "x-cron-secret: ${CRON_SHARED_SECRET}" >> /var/log/nlc-city-upkeep.log 2>&1
 ```
+
+> 建造补位已从 cron 脚本迁移至 `POST /api/tasks/strategy`，由外部 AI agent 按需调用，不再定时触发。
 
 ## 4. Supabase RLS
 

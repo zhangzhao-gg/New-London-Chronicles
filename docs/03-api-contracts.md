@@ -617,7 +617,60 @@ Success `200`:
 }
 ```
 
-## 14. `POST /api/internal/city/upkeep`
+## 14. `POST /api/tasks/strategy`
+
+用途：执行外部 AI agent 指定的建造指令。
+
+认证：
+
+- Supabase session cookies（需登录用户）
+
+Request:
+
+```json
+{
+  "templateCode": "build-tent",
+  "slotId": "residential-03"
+}
+```
+
+Success `200`:
+
+```json
+{
+  "ok": true,
+  "instanceId": "uuid",
+  "templateCode": "build-tent",
+  "slotId": "residential-03"
+}
+```
+
+Rejected `409`:
+
+```json
+{
+  "ok": false,
+  "reason": "slot_occupied"
+}
+```
+
+`reason` 枚举：
+
+| reason | 含义 |
+|--------|------|
+| `template_not_found` | 模板不存在、未启用、或不是 build 类型 |
+| `invalid_slot` | slotId 格式错误或不属于该建筑的区域 |
+| `slot_occupied` | 地块已被在建实例或已建成建筑占用 |
+| `max_active_reached` | 该建筑同时在建数量已达模板上限 |
+| `insufficient_resource` | 城市资源不够扣建造成本 |
+
+规则：
+
+- 建造决策由外部 AI agent 做出，接口只做校验和执行
+- 校验通过后 CAS 扣除城市资源并创建 task_instance
+- 并发安全：数据库唯一约束 + CAS 乐观锁，最多重试 3 次
+
+## 15. `POST /api/internal/city/upkeep`
 
 用途：执行每日城市消耗，由服务器定时任务调用。
 

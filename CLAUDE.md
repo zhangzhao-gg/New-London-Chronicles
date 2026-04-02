@@ -29,7 +29,7 @@ public/ - 图片、音频、字体等静态资产 (planned)
 </directory>
 
 <directory>
-scripts/ - 脱离 Next runtime 的后台脚本，当前仅 `task-strategy.ts` (planned)
+scripts/ - 脱离 Next runtime 的后台脚本 (planned)
 </directory>
 
 <directory>
