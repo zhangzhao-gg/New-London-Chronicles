@@ -71,7 +71,7 @@ export function Tooltip({
       <span
         aria-hidden={!open}
         className={joinClasses(
-          "nlc-tooltip-surface pointer-events-none absolute z-40 max-w-64 rounded-md px-3 py-2 text-xs leading-5 text-[var(--nlc-text)]",
+          "nlc-tooltip-surface pointer-events-none absolute z-40 min-w-[220px] max-w-80 rounded-md px-4 py-3 text-xs leading-5 text-[var(--nlc-text)]",
           "transition duration-150 ease-out",
           positionClasses[side],
           open ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",

@@ -15,6 +15,9 @@ import Modal from "@/components/ui/Modal";
 import type { CityDistrict, DistrictKey } from "@/hooks/use-city";
 import { navigateTo } from "@/lib/client-navigation";
 
+const TASK_THUMB_URL =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w";
+
 type TaskTemplate = {
   id: string;
   code: string;
@@ -57,38 +60,26 @@ class DistrictModalApiError extends Error {
   }
 }
 
-const districtCopy: Record<
-  DistrictKey,
-  {
-    title: string;
-    subtitle: string;
-    hero: string;
-  }
-> = {
+const districtCopy: Record<DistrictKey, { title: string; subtitle: string }> = {
   exploration: {
     title: "Exploration Outpost",
     subtitle: "前哨正在等待新的远征排班与外部巡查。",
-    hero: "bg-[linear-gradient(180deg,rgba(34,24,16,0.1),rgba(18,13,10,0.95)),radial-gradient(circle_at_top,rgba(148,163,184,0.24),transparent_42%)]",
   },
   food: {
     title: "Food District",
     subtitle: "食物区负责维持生存线，原料与配给会在这里被重新调度。",
-    hero: "bg-[linear-gradient(180deg,rgba(34,24,16,0.1),rgba(18,13,10,0.95)),radial-gradient(circle_at_top,rgba(74,222,128,0.18),transparent_42%)]",
   },
   medical: {
     title: "Medical Ward",
     subtitle: "医疗站关注病患与冻伤处理，任务可用性随城市状态变化。",
-    hero: "bg-[linear-gradient(180deg,rgba(34,24,16,0.1),rgba(18,13,10,0.95)),radial-gradient(circle_at_top,rgba(96,165,250,0.2),transparent_42%)]",
   },
   residential: {
     title: "Residential Settlement",
     subtitle: "居民区的建造与后勤维护会持续决定城市的容纳与稳定。",
-    hero: "bg-[linear-gradient(180deg,rgba(34,24,16,0.1),rgba(18,13,10,0.95)),radial-gradient(circle_at_top,rgba(244,164,98,0.24),transparent_42%)]",
   },
   resource: {
     title: "Industrial Resource Zone",
     subtitle: "资源区决定煤炭、木材与钢材的供给节奏，是城市心脏外的第二条命脉。",
-    hero: "bg-[linear-gradient(180deg,rgba(34,24,16,0.1),rgba(18,13,10,0.95)),radial-gradient(circle_at_top,rgba(148,163,184,0.22),transparent_42%)]",
   },
 };
 
@@ -343,17 +334,13 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
     >
       {district ? (
         <div className="space-y-5">
-          <section
-            className={joinClasses(
-              "relative overflow-hidden rounded-2xl border border-[rgba(244,164,98,0.18)] px-6 py-8",
-              copy?.hero,
-            )}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_24%)]" />
-            <div className="relative">
-              <p className="m-0 text-[0.7rem] uppercase tracking-[0.3em] text-[var(--nlc-muted)]">District Operations</p>
-              <h3 className="m-0 mt-2 text-3xl uppercase tracking-[0.08em] text-[var(--nlc-orange)]">{copy?.title}</h3>
-              <p className="m-0 mt-3 max-w-2xl text-sm leading-7 text-[var(--nlc-muted)]">{copy?.subtitle}</p>
+          <section className="relative h-44 overflow-hidden rounded-sm border border-[rgba(244,164,98,0.2)]">
+            <img alt="" className="h-full w-full object-cover brightness-[0.4] contrast-125" src={TASK_THUMB_URL} />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#120d0a] via-transparent to-black/30" />
+            <div className="absolute bottom-5 left-6">
+              <p className="m-0 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[rgba(244,164,98,0.5)]">District Operations</p>
+              <h3 className="m-0 mt-1 text-3xl uppercase tracking-tight text-[var(--nlc-orange)]">{copy?.title}</h3>
+              <p className="m-0 mt-1 text-xs font-bold uppercase tracking-[0.18em] text-[rgba(244,164,98,0.5)]">{copy?.subtitle}</p>
             </div>
           </section>
 
@@ -364,8 +351,25 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
           ) : null}
 
           {isLoading ? (
-            <div className="rounded-2xl border border-[rgba(244,164,98,0.14)] bg-black/20 px-5 py-8 text-center text-sm text-[var(--nlc-muted)]">
-              正在同步 `{district.label}` 区块任务...
+            <div className="space-y-4">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className={joinClasses(
+                    "flex animate-pulse items-center",
+                    i === 0
+                      ? "gap-6 rounded-sm border-2 border-[rgba(244,164,98,0.15)] bg-[rgba(244,164,98,0.05)] p-6"
+                      : "gap-4 rounded-sm border border-[rgba(244,164,98,0.1)] bg-black/20 p-4",
+                  )}
+                >
+                  <div className={joinClasses("shrink-0 rounded", i === 0 ? "h-20 w-20 bg-[rgba(244,164,98,0.08)]" : "h-14 w-14 bg-[rgba(244,164,98,0.06)]")} />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-32 rounded bg-[rgba(244,164,98,0.1)]" />
+                    <div className="h-3 w-full max-w-xs rounded bg-[rgba(244,164,98,0.06)]" />
+                  </div>
+                  <div className={joinClasses("shrink-0 rounded", i === 0 ? "h-11 w-24 bg-[rgba(244,164,98,0.1)]" : "h-9 w-20 bg-[rgba(244,164,98,0.08)]")} />
+                </div>
+              ))}
             </div>
           ) : null}
 
@@ -381,60 +385,84 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
                 const taskKey = `${task.template.id}:${task.instance?.id ?? "template"}`;
                 const disabledReason = formatDisabledReason(task);
                 const isJoining = isJoiningTaskKey === taskKey;
+                const featured = index === 0 && task.canJoin;
 
                 return (
                   <article
                     className={joinClasses(
-                      "rounded-2xl border px-5 py-5 transition-colors",
-                      index === 0 && task.canJoin
-                        ? "border-[rgba(255,157,0,0.44)] bg-[rgba(244,164,98,0.08)]"
-                        : "border-[rgba(244,164,98,0.16)] bg-[rgba(0,0,0,0.28)]",
+                      "flex items-center transition-all",
+                      featured
+                        ? "gap-6 rounded-sm border-2 border-[rgba(244,164,98,0.4)] bg-[rgba(244,164,98,0.1)] p-6 hover:bg-[rgba(244,164,98,0.15)]"
+                        : "gap-4 rounded-sm border border-[rgba(244,164,98,0.2)] bg-black/40 p-4 hover:border-[rgba(244,164,98,0.4)]",
                     )}
                     key={taskKey}
                   >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-[rgba(244,164,98,0.16)] px-2 py-1 text-[0.64rem] uppercase tracking-[0.24em] text-[var(--nlc-orange)]">
-                            {task.template.type}
+                    {/* 缩略图 */}
+                    <div
+                      className={joinClasses(
+                        "shrink-0 overflow-hidden rounded border",
+                        featured
+                          ? "h-20 w-20 border-[rgba(244,164,98,0.3)] bg-black/40"
+                          : "h-14 w-14 border-[rgba(244,164,98,0.2)] bg-black/60",
+                      )}
+                    >
+                      <img
+                        alt=""
+                        className={joinClasses("h-full w-full object-cover grayscale", featured ? "opacity-60" : "opacity-40")}
+                        src={TASK_THUMB_URL}
+                      />
+                    </div>
+
+                    {/* 任务信息 */}
+                    <div className="min-w-0 flex-1">
+                      {featured ? (
+                        <p className="m-0 mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--nlc-orange)]">
+                          {task.template.type}
+                        </p>
+                      ) : null}
+                      <p className={joinClasses("m-0 font-bold", featured ? "text-sm text-slate-100" : "text-xs text-slate-200")}>
+                        {task.template.name}
+                      </p>
+                      <p className={joinClasses("m-0 mt-1", featured ? "text-xs text-slate-400" : "text-[11px] text-slate-500")}>
+                        {formatTaskEffect(task)}
+                      </p>
+
+                      {task.instance ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[0.65rem] text-white/60">
+                          <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
+                            参与 {task.participants}
                           </span>
-                          <span className="text-[0.72rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">
-                            参与人数 {task.participants}
+                          <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
+                            已推进 {task.instance.progressMinutes}m
+                          </span>
+                          <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
+                            剩余 {task.instance.remainingMinutes}m
                           </span>
                         </div>
-                        <h4 className="m-0 mt-3 text-xl uppercase tracking-[0.08em] text-white">{task.template.name}</h4>
-                        <p className="m-0 mt-2 text-sm leading-7 text-[var(--nlc-muted)]">{formatTaskEffect(task)}</p>
+                      ) : (
+                        <p className="m-0 mt-1 text-[0.65rem] text-white/50">参与人数 {task.participants}</p>
+                      )}
 
-                        {task.instance ? (
-                          <div className="mt-3 flex flex-wrap gap-2 text-[0.72rem] uppercase tracking-[0.18em] text-white/76">
-                            <span className="rounded-full border border-[rgba(244,164,98,0.16)] px-2 py-1">
-                              槽位 {task.instance.slotId ?? "N/A"}
-                            </span>
-                            <span className="rounded-full border border-[rgba(244,164,98,0.16)] px-2 py-1">
-                              已推进 {task.instance.progressMinutes} 分钟
-                            </span>
-                            <span className="rounded-full border border-[rgba(244,164,98,0.16)] px-2 py-1">
-                              剩余 {task.instance.remainingMinutes} 分钟
-                            </span>
-                          </div>
-                        ) : null}
-
-                        {disabledReason ? (
-                          <p className="m-0 mt-3 text-sm leading-6 text-amber-100">{disabledReason}</p>
-                        ) : null}
-                      </div>
-
-                      <div className="xl:w-48">
-                        <Button
-                          disabled={!task.canJoin || isJoining}
-                          fullWidth
-                          onClick={() => void handleJoin(task)}
-                          variant={task.canJoin ? "primary" : "secondary"}
-                        >
-                          {isJoining ? "Joining" : task.actionLabel}
-                        </Button>
-                      </div>
+                      {disabledReason ? (
+                        <p className="m-0 mt-2 text-xs text-amber-200/80">{disabledReason}</p>
+                      ) : null}
                     </div>
+
+                    {/* 操作按钮 */}
+                    <button
+                      className={joinClasses(
+                        "shrink-0 font-bold uppercase tracking-wider transition-all",
+                        featured
+                          ? "border-2 border-[var(--nlc-orange)] bg-[var(--nlc-orange)] px-8 py-3 text-xs text-[var(--nlc-dark)] hover:bg-transparent hover:text-[var(--nlc-orange)]"
+                          : "border border-[rgba(244,164,98,0.6)] px-6 py-2 text-[10px] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.2)]",
+                        (!task.canJoin || isJoining) && "pointer-events-none opacity-40",
+                      )}
+                      disabled={!task.canJoin || isJoining}
+                      onClick={() => void handleJoin(task)}
+                      type="button"
+                    >
+                      {isJoining ? "Joining" : task.actionLabel}
+                    </button>
                   </article>
                 );
               })}

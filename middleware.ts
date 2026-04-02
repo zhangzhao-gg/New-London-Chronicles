@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 页面与 API 请求路径、Supabase cookie session
- * [OUTPUT]: 保护受限页面与受保护 API，缺失登录时重定向或返回 401
+ * [OUTPUT]: 保护受限页面与受保护 API，缺失登录时重定向到 /login 或返回 401
  * [POS]: 位于 `middleware.ts`，作为全局请求入口守卫
  * [PROTOCOL]: 变更时更新此头部，然后检查 `/CLAUDE.md`
  */
@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
     const authSession = await resolveAuthSessionFromRequest(request);
 
     if (!authSession) {
-      const response = NextResponse.redirect(new URL("/", request.url));
+      const response = NextResponse.redirect(new URL("/login", request.url));
 
       clearSupabaseSessionCookie(response);
 
@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 }
 

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 当前请求 cookie session、`@/lib/auth`、`@/components/city/CityPageShell`
  * [OUTPUT]: 城市地图页服务端入口，为客户端 HUD 注入当前用户初始态
- * [POS]: 位于 `app/city/page.tsx`，作为 M08 城市地图页入口
+ * [POS]: 位于 `app/city/page.tsx`，作为 M08 城市地图页入口，未登录时重定向到 /login
  * [PROTOCOL]: 变更时更新此头部，然后检查 `app/CLAUDE.md` 与 `/CLAUDE.md`
  */
 
@@ -59,7 +59,7 @@ export default async function CityPage() {
   const session = await getCurrentUser();
 
   if (!session) {
-    redirect("/");
+    redirect("/login");
   }
 
   const initialCity = await getInitialCitySnapshot();

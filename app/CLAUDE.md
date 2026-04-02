@@ -6,9 +6,10 @@
 `city/`: M08 城市地图页入口目录。  
 `focus/`: M10 Focus 页面入口目录。  
 `complete/`: M10 完成页入口目录。  
+`login/`: M07 登录页入口目录，用户名校验与登录跳转。  
 `globals.css`: 全局设计 token、共享表面样式与通用视觉基线。  
 `layout.tsx`: 根布局，负责注入 `globals.css` 与全局字体。  
-`page.tsx`: M07 登录页入口，负责用户名校验与登录跳转。  
+`page.tsx`: 根路由分发器，服务端重定向到 /city。  
 `CLAUDE.md`: app 目录地图与职责边界。  
 
 法则

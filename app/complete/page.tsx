@@ -28,7 +28,7 @@ export default async function CompletePage() {
   const session = await getCurrentUser();
 
   if (!session) {
-    redirect("/");
+    redirect("/login");
   }
 
   return <CompleteExperience initialUser={session.user} />;
