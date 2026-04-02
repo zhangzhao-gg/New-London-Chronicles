@@ -84,7 +84,6 @@
 │  ├─ images/
 │  └─ fonts/
 ├─ scripts/
-│  └─ task-strategy.ts
 ├─ supabase/
 │  ├─ migrations/
 │  │  ├─ 001_create_tables.sql

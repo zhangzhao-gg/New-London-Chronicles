@@ -1,7 +1,7 @@
 /**
- * [INPUT]: `process.env`、`city_resources`、`task_templates`、`task_instances`、`buildings`、`users` 的 Supabase REST/RPC 数据
- * [OUTPUT]: 提供 cron 鉴权、Asia/Shanghai 日历、建造补位与每日 upkeep 执行能力
- * [POS]: 位于 `lib/cron.ts`，被 `scripts/task-strategy.ts` 与 `app/api/internal/city/upkeep/route.ts` 消费
+ * [INPUT]: `process.env`、`city_resources`、`task_templates`、`task_instances`、`buildings`、`users` 的 Supabase REST 数据
+ * [OUTPUT]: 提供 cron 鉴权、Asia/Shanghai 日历、建造指令执行与每日 upkeep 能力
+ * [POS]: 位于 `lib/cron.ts`，被 `app/api/tasks/strategy/route.ts` 与 `app/api/internal/city/upkeep/route.ts` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `CLAUDE.md` 与相关 docs
  */
 
@@ -50,14 +50,6 @@ type UserRow = {
   created_at: string;
 };
 
-type DailyCityUpkeepRpcRow = {
-  active_users: number;
-  food_consumed: number;
-  coal_consumed: number;
-  newly_hungry_users: number;
-  business_date: string;
-};
-
 export type DailyCityUpkeepSummary = {
   businessDate: string;
   activeUsers: number;
@@ -66,20 +58,14 @@ export type DailyCityUpkeepSummary = {
   newlyHungryUsers: number;
 };
 
-export type TaskStrategyTickSummary = {
-  ok: true;
-  mode: "rpc" | "fallback";
-  businessDate: string;
-  createdInstances: Array<{
-    instanceId: string;
-    templateCode: string;
-    slotId: string;
-  }>;
-  skippedTemplates: Array<{
-    templateCode: string;
-    reason: "max_active_reached" | "insufficient_resource" | "no_slot";
-  }>;
+export type BuildOrderInput = {
+  templateCode: string;
+  slotId: string;
 };
+
+export type BuildOrderResult =
+  | { ok: true; instanceId: string; templateCode: string; slotId: string }
+  | { ok: false; reason: "template_not_found" | "invalid_slot" | "slot_occupied" | "max_active_reached" | "insufficient_resource" };
 
 type CreateInstanceResult =
   | {
@@ -90,24 +76,13 @@ type CreateInstanceResult =
     }
   | {
       created: false;
-      reason: "insufficient_resource" | "no_slot";
+      reason: "insufficient_resource" | "slot_occupied";
       resourceState: CityResourcesRow;
     };
 
 const SHANGHAI_TIME_ZONE = "Asia/Shanghai";
 const CITY_RESOURCE_ROW_ID = 1;
-const MAX_ACTIVE_BUILD_INSTANCES = 2;
 const CAS_RETRY_LIMIT = 3;
-
-const BUILD_PRIORITY = [
-  "build-tent",
-  "build-collection-hut",
-  "build-medical-post",
-  "build-hunters-hut",
-  "build-cookhouse",
-  "build-workshop",
-  "build-lighthouse",
-] as const;
 
 const DISTRICT_SLOT_COUNTS: Record<District, number> = {
   resource: 8,
@@ -204,31 +179,6 @@ class SupabaseAdminApi {
     }
   }
 
-  async callRpc<T>(name: string, body: unknown): Promise<T | null> {
-    const response = await fetch(this.buildUrl(`/rpc/${name}`), {
-      method: "POST",
-      headers: this.headers,
-      body: JSON.stringify(body ?? {}),
-      cache: "no-store",
-    });
-
-    if (response.status === 404) {
-      return null;
-    }
-
-    if (!response.ok) {
-      const payload = await safeReadJson(response);
-      const code = readErrorCode(payload);
-
-      if (code === "PGRST202" || code === "42883") {
-        return null;
-      }
-
-      throw toCronError(payload, response.status);
-    }
-
-    return this.parseRpcPayload<T>(await safeReadJson(response));
-  }
 
   private buildUrl(path: string, params?: URLSearchParams): string {
     const url = new URL(`${this.restBaseUrl}${path.startsWith("/") ? path : `/${path}`}`);
@@ -250,13 +200,6 @@ class SupabaseAdminApi {
     return payload as T;
   }
 
-  private parseRpcPayload<T>(payload: unknown): T {
-    if (Array.isArray(payload)) {
-      return (payload[0] ?? null) as T;
-    }
-
-    return payload as T;
-  }
 }
 
 export function getBusinessDateInShanghai(now: Date = new Date()): string {
@@ -314,31 +257,69 @@ export function isValidCronSecret(candidate: string | null | undefined): boolean
 
 export async function runDailyCityUpkeep(): Promise<DailyCityUpkeepSummary> {
   const api = new SupabaseAdminApi();
-  const rpcResult = await api.callRpc<DailyCityUpkeepRpcRow>("rpc_daily_city_upkeep", {});
-
-  if (rpcResult) {
-    return normalizeDailyCityUpkeepSummary(rpcResult);
-  }
-
   return runDailyCityUpkeepFallback(api);
 }
 
-export async function runTaskStrategyTick(): Promise<TaskStrategyTickSummary> {
+export async function executeBuildOrder(input: BuildOrderInput): Promise<BuildOrderResult> {
   const api = new SupabaseAdminApi();
-  const businessDate = getBusinessDateInShanghai();
-  const rpcResult = await api.callRpc<JsonRecord>("rpc_task_strategy_tick", {});
 
-  if (rpcResult) {
-    return {
-      ok: true,
-      mode: "rpc",
-      businessDate,
-      createdInstances: [],
-      skippedTemplates: [],
-    };
+  /* ── 1. 模板校验 ── */
+  const template = await findBuildTemplate(api, input.templateCode);
+
+  if (!template) {
+    return { ok: false, reason: "template_not_found" };
   }
 
-  return runTaskStrategyTickFallback(api, businessDate);
+  /* ── 2. 地块格式校验 ── */
+  if (!isValidSlotForDistrict(input.slotId, template.district)) {
+    return { ok: false, reason: "invalid_slot" };
+  }
+
+  /* ── 3. 并发上限 + 占位校验 ── */
+  const [activeInstances, buildings] = await Promise.all([
+    getActiveTaskInstances(api),
+    getCompletedBuildingSlots(api),
+  ]);
+
+  const occupiedSlots = new Set<string>();
+  let activeCount = 0;
+
+  for (const instance of activeInstances) {
+    if (instance.slot_id) {
+      occupiedSlots.add(instance.slot_id);
+    }
+
+    if (instance.template_id === template.id) {
+      activeCount += 1;
+    }
+  }
+
+  for (const building of buildings) {
+    occupiedSlots.add(building.slot_id);
+  }
+
+  if (occupiedSlots.has(input.slotId)) {
+    return { ok: false, reason: "slot_occupied" };
+  }
+
+  if (activeCount >= template.max_concurrent_instances) {
+    return { ok: false, reason: "max_active_reached" };
+  }
+
+  /* ── 4. CAS 扣资源 + 创建实例 ── */
+  const resourceState = await getCityResources(api);
+  const result = await createTaskInstanceWithReservedCost(api, template, input.slotId, resourceState);
+
+  if (!result.created) {
+    return { ok: false, reason: result.reason };
+  }
+
+  return {
+    ok: true,
+    instanceId: result.instanceId,
+    templateCode: input.templateCode,
+    slotId: result.slotId,
+  };
 }
 
 async function runDailyCityUpkeepFallback(api: SupabaseAdminApi): Promise<DailyCityUpkeepSummary> {
@@ -367,102 +348,6 @@ async function runDailyCityUpkeepFallback(api: SupabaseAdminApi): Promise<DailyC
   };
 }
 
-async function runTaskStrategyTickFallback(
-  api: SupabaseAdminApi,
-  businessDate: string,
-): Promise<TaskStrategyTickSummary> {
-  const [templates, activeInstances, buildings] = await Promise.all([
-    getBuildTemplates(api),
-    getActiveTaskInstances(api),
-    getCompletedBuildingSlots(api),
-  ]);
-
-  let resourceState = await getCityResources(api);
-
-  const templatesByCode = new Map(templates.map((template) => [template.code, template]));
-  const activeCountByTemplateId = new Map<string, number>();
-  const occupiedSlots = new Set<string>();
-
-  for (const instance of activeInstances) {
-    activeCountByTemplateId.set(
-      instance.template_id,
-      (activeCountByTemplateId.get(instance.template_id) ?? 0) + 1,
-    );
-
-    if (instance.slot_id) {
-      occupiedSlots.add(instance.slot_id);
-    }
-  }
-
-  for (const building of buildings) {
-    occupiedSlots.add(building.slot_id);
-  }
-
-  const createdInstances: TaskStrategyTickSummary["createdInstances"] = [];
-  const skippedTemplates: TaskStrategyTickSummary["skippedTemplates"] = [];
-
-  for (const code of BUILD_PRIORITY) {
-    const template = templatesByCode.get(code);
-
-    if (!template) {
-      continue;
-    }
-
-    const maxAllowed = Math.min(template.max_concurrent_instances, MAX_ACTIVE_BUILD_INSTANCES);
-
-    if (maxAllowed <= 0) {
-      skippedTemplates.push({ templateCode: code, reason: "max_active_reached" });
-      continue;
-    }
-
-    let activeCount = activeCountByTemplateId.get(template.id) ?? 0;
-
-    if (activeCount >= maxAllowed) {
-      skippedTemplates.push({ templateCode: code, reason: "max_active_reached" });
-      continue;
-    }
-
-    while (activeCount < maxAllowed) {
-      const nextSlotId = getFirstAvailableSlotId(template.district, occupiedSlots);
-
-      if (!nextSlotId) {
-        skippedTemplates.push({ templateCode: code, reason: "no_slot" });
-        break;
-      }
-
-      const result = await createTaskInstanceWithReservedCost(
-        api,
-        template,
-        nextSlotId,
-        resourceState,
-      );
-
-      resourceState = result.resourceState;
-
-      if (!result.created) {
-        skippedTemplates.push({ templateCode: code, reason: result.reason });
-        break;
-      }
-
-      activeCount += 1;
-      activeCountByTemplateId.set(template.id, activeCount);
-      occupiedSlots.add(result.slotId);
-      createdInstances.push({
-        instanceId: result.instanceId,
-        templateCode: code,
-        slotId: result.slotId,
-      });
-    }
-  }
-
-  return {
-    ok: true,
-    mode: "fallback",
-    businessDate,
-    createdInstances,
-    skippedTemplates,
-  };
-}
 
 async function createTaskInstanceWithReservedCost(
   api: SupabaseAdminApi,
@@ -506,7 +391,7 @@ async function createTaskInstanceWithReservedCost(
 
         return {
           created: false,
-          reason: "no_slot",
+          reason: "slot_occupied",
           resourceState,
         };
       }
@@ -627,24 +512,36 @@ async function getCityResources(api: SupabaseAdminApi): Promise<CityResourcesRow
   return row;
 }
 
-async function getBuildTemplates(api: SupabaseAdminApi): Promise<TaskTemplateRow[]> {
+async function findBuildTemplate(api: SupabaseAdminApi, code: string): Promise<TaskTemplateRow | null> {
   const rows = await api.get<TaskTemplateRow[]>(
     "/task_templates",
     buildSingleRowParams({
-      select:
-        "id,code,type,district,build_cost,duration_minutes,max_concurrent_instances,enabled",
+      select: "id,code,type,district,build_cost,duration_minutes,max_concurrent_instances,enabled",
+      code: `eq.${code}`,
       type: "eq.build",
       enabled: "eq.true",
+      limit: "1",
     }),
   );
 
-  return rows.sort((left, right) => {
-    const leftIndex = BUILD_PRIORITY.indexOf(left.code as (typeof BUILD_PRIORITY)[number]);
-    const rightIndex = BUILD_PRIORITY.indexOf(right.code as (typeof BUILD_PRIORITY)[number]);
+  return rows[0] ?? null;
+}
 
-    return (leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex)
-      - (rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex);
-  });
+function isValidSlotForDistrict(slotId: string, district: District): boolean {
+  const match = slotId.match(/^([a-z]+)-(\d+)$/);
+
+  if (!match) {
+    return false;
+  }
+
+  const [, slotDistrict, indexStr] = match;
+
+  if (slotDistrict !== district) {
+    return false;
+  }
+
+  const index = parseInt(indexStr, 10);
+  return index >= 1 && index <= DISTRICT_SLOT_COUNTS[district];
 }
 
 async function getActiveTaskInstances(api: SupabaseAdminApi): Promise<TaskInstanceRow[]> {
@@ -683,15 +580,6 @@ async function getTodayActiveUsers(
   );
 }
 
-function normalizeDailyCityUpkeepSummary(row: DailyCityUpkeepRpcRow): DailyCityUpkeepSummary {
-  return {
-    businessDate: row.business_date,
-    activeUsers: row.active_users,
-    foodConsumed: row.food_consumed,
-    coalConsumed: row.coal_consumed,
-    newlyHungryUsers: row.newly_hungry_users,
-  };
-}
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -743,20 +631,6 @@ function subtractCost(
   return next;
 }
 
-function getFirstAvailableSlotId(district: District, occupiedSlots: Set<string>): string | null {
-  const total = DISTRICT_SLOT_COUNTS[district];
-
-  for (let index = 1; index <= total; index += 1) {
-    const slotId = `${district}-${String(index).padStart(2, "0")}`;
-
-    if (!occupiedSlots.has(slotId)) {
-      return slotId;
-    }
-  }
-
-  return null;
-}
-
 function buildSingleRowParams(values: Record<string, string>): URLSearchParams {
   const params = new URLSearchParams();
 
@@ -783,14 +657,6 @@ async function safeReadJson(response: Response): Promise<unknown> {
   }
 }
 
-function readErrorCode(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const maybeCode = (payload as { code?: unknown }).code;
-  return typeof maybeCode === "string" ? maybeCode : null;
-}
 
 function toCronError(payload: unknown, status: number): CronError {
   if (payload && typeof payload === "object") {
