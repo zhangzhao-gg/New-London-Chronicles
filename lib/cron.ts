@@ -528,7 +528,7 @@ async function findBuildTemplate(api: SupabaseAdminApi, code: string): Promise<T
 }
 
 function isValidSlotForDistrict(slotId: string, district: District): boolean {
-  const match = slotId.match(/^([a-z]+)-(\d+)$/);
+  const match = slotId.match(/^([a-z]+)-(\d{2})$/);
 
   if (!match) {
     return false;
