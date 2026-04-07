@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 当前登录用户、`/api/session/current` 的恢复结果、`use-heartbeat`、`MusicPlayer`
- * [OUTPUT]: M10 Focus 主界面，负责恢复 session、驱动倒计时、结算后跳转 `/complete`
+ * [INPUT]: 当前登录用户、`/api/session/current`、`use-heartbeat`、`MusicPlayer`、`lib/i18n` 语言切换
+ * [OUTPUT]: M10 Focus 主界面，负责恢复 session、驱动倒计时、语言切换、结算后跳转 `/complete`
  * [POS]: 位于 `components/focus/FocusExperience.tsx`，被 `app/focus/page.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -10,9 +10,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import MusicPlayer from "@/components/focus/MusicPlayer";
+import {
+  AmbientGlyph,
+  BackGlyph,
+  DeleteGlyph,
+  GlobeGlyph,
+  HeaderGlyph,
+  PlayGlyph,
+  ResetGlyph,
+} from "@/components/focus/FocusGlyphs";
 import type { UserDto } from "@/lib/auth";
 import { type AmbientSoundId, getAudioManager } from "@/lib/audio";
 import { navigateTo } from "@/lib/client-navigation";
+import { type Locale, LOCALES, LOCALE_LABELS, getSavedLocale, saveLocale, t } from "@/lib/i18n";
 import {
   useHeartbeat,
   type FocusSession,
@@ -39,6 +49,9 @@ type AmbientOption = {
 
 const FOCUS_BACKGROUND_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCp_o98ut-RPMAIQXKRSfdH7l98-uHemKQHFyZI8BRqWMN196ZvPYC4JxscN7ESJO19-cC6i0sIMHPFBikoMQQvbcaL9VNIj5Zc3Z-ncYcXgBUhnYyJP1zXOL60nuMd8qC2HFpm7vhTvYKV19YIbbY_58QCHGK0c49raa7RobBlMhN-A2tRCCx-TN6DaYhtNYk_Xu0G9OewQfYsFbSVzyL_lu8-Cc0XAalcofXioRE2iNbf3zvFucA01x8RUD0tZ_IgUj7V0L1LfIM";
+
+const ADMIN_AVATAR_URL =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCwRgeTWQVVdMFnNCD6g_DG-XCqove2SCd0dwbELK8C990veMZd4f2osXDxyOAVWpIahzU_XHpKvLXcBEg-nhecKW2Ox1Mjta8CGx4gYKPxLgijQpHiBdxwiLQ2MHXmqQYwt6NUKTVXeFvrZSwUaIGTxHGLCqxYwvzE-ejy8Xth-uFhNySGEuil7SHO6bIXcgr26bu8zfGaa558rEkzz1ZYX0YxrbwqVpTleBR4ic0qjGyoZ2NqpNM9StQT3WuMTlANUlEfrqhQgQo";
 
 const districtLabels: Record<string, string> = {
   exploration: "Exploration Outpost",
@@ -112,129 +125,21 @@ async function fetchCurrentSession(sessionId: string | null) {
 }
 
 function formatSeconds(value: number | null) {
-  if (value == null) {
-    return "--:--";
-  }
-
+  if (value == null) return "--:--";
   const minutes = Math.floor(value / 60);
   const seconds = value % 60;
-
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function resolvePrimaryActionLabel(status: FocusSessionStatus | "ended", isPaused: boolean) {
-  if (status === "pending") {
-    return "开始";
-  }
-
+  if (status === "pending") return "开始";
   return isPaused ? "继续" : "暂停";
 }
 
 function resolveFocusStateLabel(status: FocusSessionStatus | "ended", isRunning: boolean) {
-  if (status === "pending") {
-    return "Awaiting Deployment";
-  }
-
-  if (status === "ended") {
-    return "Session Archived";
-  }
-
+  if (status === "pending") return "Awaiting Deployment";
+  if (status === "ended") return "Session Archived";
   return isRunning ? "Deep Focus Cycle" : "Focus Recovery";
-}
-
-function HeaderGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 2.8 13.2 7l4.1-2.1-2.1 4.1 4.2 1.2-4.2 1.2 2.1 4.1-4.1-2.1L12 21.2l-1.2-4.2-4.1 2.1 2.1-4.1-4.2-1.2 4.2-1.2-2.1-4.1L10.8 7 12 2.8Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function BackGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M14.5 5.5 8 12l6.5 6.5" />
-      <path d="M8.5 12H20" />
-    </svg>
-  );
-}
-
-function AmbientGlyph({ soundId }: { soundId: AmbientSoundId }) {
-  if (soundId === "focus") {
-    return (
-      <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3C9 6.5 7.5 9 7.5 12.1A4.5 4.5 0 0 0 12 16.5a4.5 4.5 0 0 0 4.5-4.4C16.5 9 15 6.5 12 3Z" fill="currentColor" opacity="0.9" />
-        <path d="M12 10.5c-1.2 1.2-1.8 2.1-1.8 3.1a1.8 1.8 0 1 0 3.6 0c0-1-.6-1.9-1.8-3.1Z" fill="#221810" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 3.75 13.35 7.2l3.7-1.2-2 3.35 3.45 1.25-3.45 1.25 2 3.35-3.7-1.2L12 17.75l-1.35-3.4-3.7 1.2 2-3.35-3.45-1.25 3.45-1.25-2-3.35 3.7 1.2L12 3.75Z"
-        fill="currentColor"
-        opacity={soundId === "chill" ? "0.9" : "0.7"}
-      />
-      {soundId === "rest" ? <circle cx="12" cy="12" r="2.1" fill="#221810" /> : null}
-    </svg>
-  );
-}
-
-function GearGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M10 3h4l.7 2.3 2.2.9 2.1-1.1 2 3.5-1.8 1.5.2 2.4 1.8 1.5-2 3.5-2.1-1.1-2.2.9L14 21h-4l-.7-2.3-2.2-.9-2.1 1.1-2-3.5 1.8-1.5-.2-2.4L2.8 9.1l2-3.5 2.1 1.1 2.2-.9L10 3Z" />
-      <circle cx="12" cy="12" r="2.8" />
-    </svg>
-  );
-}
-
-function HistoryGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M3 11a9 9 0 1 0 2.6-6.4" />
-      <path d="M3 4v4h4" />
-      <path d="M12 7.5V12l3.2 1.9" />
-    </svg>
-  );
-}
-
-function PlayGlyph({ paused }: { paused: boolean }) {
-  if (!paused) {
-    return (
-      <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="currentColor">
-        <rect x="6.5" y="5" width="4" height="14" rx="1" />
-        <rect x="13.5" y="5" width="4" height="14" rx="1" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" className="size-4 translate-x-[1px]" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5.5a1 1 0 0 1 1.53-.85l8.8 6a1 1 0 0 1 0 1.7l-8.8 6A1 1 0 0 1 8 17.5v-12Z" />
-    </svg>
-  );
-}
-
-function ResetGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
-      <path d="M19 12a7 7 0 1 1-2.05-4.95" />
-      <path d="M19 5v5h-5" />
-    </svg>
-  );
-}
-
-function DeleteGlyph() {
-  return (
-    <svg aria-hidden="true" className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
 }
 
 function TodoItemRow({
@@ -386,7 +291,10 @@ export function FocusExperience({
   const [newTodoText, setNewTodoText] = useState("");
   const [isAddingTodo, setIsAddingTodo] = useState(false);
   const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(new Set());
+  const [locale, setLocaleState] = useState<Locale>(() => getSavedLocale());
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,6 +340,17 @@ export function FocusExperience({
   useEffect(() => {
     setTodos(loadTodos(storageKey));
   }, [storageKey]);
+
+  useEffect(() => {
+    if (!showLangMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setShowLangMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showLangMenu]);
 
   const {
     cycleHeartbeatCount,
@@ -570,17 +489,41 @@ export function FocusExperience({
             <div className="flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.2em] text-[var(--nlc-muted)]">
               <span className="hidden items-center gap-2 sm:inline-flex">
                 <HeaderGlyph />
-                -20 C
+                -20°C
               </span>
-              <span className="hidden items-center gap-2 sm:inline-flex">
-                <GearGlyph />
-              </span>
-              <span className="hidden items-center gap-2 sm:inline-flex">
-                <HistoryGlyph />
-              </span>
-              <span className="flex h-7 w-7 items-center justify-center border border-[rgba(244,164,98,0.2)] bg-[rgba(247,237,226,0.96)] text-[#1f1610]">
-                I
-              </span>
+              <div className="relative" ref={langMenuRef}>
+                <button
+                  aria-label={t("focus.language", locale)}
+                  className="relative rounded p-1.5 text-[var(--nlc-muted)] transition-colors hover:bg-[rgba(244,164,98,0.08)] hover:text-[var(--nlc-orange)]"
+                  onClick={() => setShowLangMenu((v) => !v)}
+                  type="button"
+                >
+                  <GlobeGlyph />
+                  <span className="absolute right-1 top-1 size-1.5 rounded-full bg-[var(--nlc-orange)]" />
+                </button>
+                {showLangMenu ? (
+                  <div className="absolute right-0 top-full z-50 mt-1 min-w-[110px] rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(8,5,4,0.92)] py-1 shadow-xl backdrop-blur-md">
+                    {LOCALES.map((loc) => (
+                      <button
+                        className={joinClasses(
+                          "block w-full px-4 py-2 text-left text-[0.68rem] tracking-[0.08em] transition-colors",
+                          loc === locale
+                            ? "bg-[rgba(244,164,98,0.12)] font-bold text-[var(--nlc-orange)]"
+                            : "text-[var(--nlc-muted)] hover:bg-[rgba(244,164,98,0.06)] hover:text-[var(--nlc-orange)]",
+                        )}
+                        key={loc}
+                        onClick={() => { setLocaleState(loc); saveLocale(loc); setShowLangMenu(false); }}
+                        type="button"
+                      >
+                        {LOCALE_LABELS[loc]}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="h-8 w-8 overflow-hidden rounded border border-[rgba(244,164,98,0.4)] p-0.5">
+                <img alt="Administrator portrait" className="h-full w-full rounded-sm object-cover" src={ADMIN_AVATAR_URL} />
+              </div>
             </div>
           </div>
 
@@ -821,8 +764,6 @@ export function FocusExperience({
                     </button>
                   </div>
                 </div>
-
-
               </div>
             </div>
           </section>

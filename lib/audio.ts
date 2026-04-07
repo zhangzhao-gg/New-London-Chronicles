@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 本地静态音频资源路径约定与 Focus 页客户端交互
- * [OUTPUT]: 可订阅的客户端音频管理器，提供环境音与 lo-fi 播放控制
- * [POS]: 位于 `lib/audio.ts`，被 `components/focus/MusicPlayer.tsx` 与后续 Focus 模块消费
+ * [OUTPUT]: AudioPlaylist / PLAYLISTS / AudioManager（含 setPlaylist）/ 可订阅快照
+ * [POS]: 位于 `lib/audio.ts`，被 `components/focus/MusicPlayer.tsx` 与 Focus 模块消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `/CLAUDE.md`
  */
 
@@ -14,8 +14,19 @@ export type AudioTrack = {
   src: string;
 };
 
+export type PlaylistIcon = "flame" | "snowflake" | "globe";
+
+export type AudioPlaylist = {
+  id: string;
+  name: string;
+  description: string;
+  icon: PlaylistIcon;
+  tracks: AudioTrack[];
+};
+
 export type AudioSnapshot = {
   ambientSoundId: AmbientSoundId;
+  activePlaylistId: string;
   isAmbientPlaying: boolean;
   isMusicPlaying: boolean;
   musicVolume: number;
@@ -42,26 +53,55 @@ const AMBIENT_SOURCE_MAP: Record<AmbientSoundId, string> = {
   rest: "/audio/ambient/rest.wav",
 };
 
-const MUSIC_TRACKS: AudioTrack[] = [
+/* ─── 播放列表：单一真相源 ─── */
+
+export const PLAYLISTS: AudioPlaylist[] = [
   {
-    id: "white-furnace",
-    title: "White Furnace Echo",
-    fileLabel: "white_furnace_echo.wav",
-    src: "/audio/music/white-furnace-echo.mp3",
+    id: "furnace-works",
+    name: "Furnace Works",
+    description: "工业炉火",
+    icon: "flame",
+    tracks: [
+      {
+        id: "white-furnace",
+        title: "White Furnace Echo",
+        fileLabel: "white_furnace_echo.wav",
+        src: "/audio/music/white-furnace-echo.mp3",
+      },
+    ],
   },
   {
-    id: "signal-lantern",
-    title: "Signal Lantern Drift",
-    fileLabel: "signal_lantern_drift.wav",
-    src: "/audio/music/Piotr Musiał - Frostpunk Expansions (Original Soundtrack) - 01 - The Last Autumn Theme.mp3",
+    id: "frostpunk-ost",
+    name: "Frostpunk OST",
+    description: "冰汽时代原声",
+    icon: "snowflake",
+    tracks: [
+      {
+        id: "signal-lantern",
+        title: "Signal Lantern Drift",
+        fileLabel: "signal_lantern_drift.wav",
+        src: "/audio/music/Piotr Musiał - Frostpunk Expansions (Original Soundtrack) - 01 - The Last Autumn Theme.mp3",
+      },
+    ],
   },
   {
-    id: "ashen-watch",
-    title: "Ashen Watch Lullaby",
-    fileLabel: "ashen_watch_lullaby.wav",
-    src: "/audio/music/ashen-watch-lullaby.mp3",
+    id: "expedition-night",
+    name: "Expedition Night",
+    description: "远征夜曲",
+    icon: "globe",
+    tracks: [
+      {
+        id: "ashen-watch",
+        title: "Ashen Watch Lullaby",
+        fileLabel: "ashen_watch_lullaby.wav",
+        src: "/audio/music/ashen-watch-lullaby.mp3",
+      },
+    ],
   },
 ];
+
+/* 派生：全量曲目列表（向后兼容） */
+const MUSIC_TRACKS: AudioTrack[] = PLAYLISTS.flatMap((p) => p.tracks);
 
 const DEFAULT_MUSIC_VOLUME = 0.65;
 const DEFAULT_AMBIENT_VOLUME = 0.42;
@@ -73,10 +113,6 @@ function isBrowser() {
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
-}
-
-function getTrack(index: number) {
-  return MUSIC_TRACKS[index] ?? null;
 }
 
 function formatUnavailableMessage(context: AudioContext) {
@@ -94,11 +130,12 @@ function formatInteractionMessage(context: AudioContext) {
 function createInitialSnapshot(): AudioSnapshot {
   return {
     ambientSoundId: "focus",
+    activePlaylistId: PLAYLISTS[0]?.id ?? "",
     isAmbientPlaying: false,
     isMusicPlaying: false,
     musicVolume: DEFAULT_MUSIC_VOLUME,
     activeTrackIndex: 0,
-    activeTrack: getTrack(0),
+    activeTrack: PLAYLISTS[0]?.tracks[0] ?? null,
     isAmbientReady: true,
     isMusicReady: true,
     lastError: null,
@@ -280,6 +317,17 @@ export class AudioManager {
     this.updateSnapshot({ musicVolume });
   }
 
+  async setPlaylist(playlistId: string) {
+    const playlist = PLAYLISTS.find((p) => p.id === playlistId);
+
+    if (!playlist || playlist.id === this.snapshot.activePlaylistId) {
+      return;
+    }
+
+    this.updateSnapshot({ activePlaylistId: playlist.id });
+    await this.applyTrack(0, { autoplay: true });
+  }
+
   dispose() {
     this.cancelAmbientFade();
     this.ambientRequestToken += 1;
@@ -326,17 +374,25 @@ export class AudioManager {
     this.updateSnapshot({ isAmbientPlaying: false });
   }
 
+  private getActivePlaylistTracks(): AudioTrack[] {
+    const playlist = PLAYLISTS.find((p) => p.id === this.snapshot.activePlaylistId);
+    return playlist?.tracks ?? MUSIC_TRACKS;
+  }
+
   private async changeTrackBy(direction: 1 | -1) {
-    if (MUSIC_TRACKS.length === 0) {
+    const tracks = this.getActivePlaylistTracks();
+
+    if (tracks.length === 0) {
       return;
     }
 
-    const nextIndex = (this.snapshot.activeTrackIndex + direction + MUSIC_TRACKS.length) % MUSIC_TRACKS.length;
+    const nextIndex = (this.snapshot.activeTrackIndex + direction + tracks.length) % tracks.length;
     await this.applyTrack(nextIndex, { autoplay: this.snapshot.isMusicPlaying });
   }
 
   private async applyTrack(index: number, options: TrackChangeOptions) {
-    const nextTrack = getTrack(index);
+    const tracks = this.getActivePlaylistTracks();
+    const nextTrack = tracks[index] ?? null;
 
     if (!nextTrack) {
       this.updateSnapshot({ activeTrack: null, activeTrackIndex: 0, isMusicPlaying: false, isMusicReady: false });

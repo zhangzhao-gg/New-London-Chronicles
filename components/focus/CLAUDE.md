@@ -3,9 +3,10 @@
 
 成员清单
 
-`FocusExperience.tsx`: M10 Focus 主界面，负责恢复 session、驱动倒计时与跳转完成页。  
+`FocusExperience.tsx`: M10 Focus 主界面，负责恢复 session、驱动倒计时、语言切换与跳转完成页。  
 `CompleteExperience.tsx`: M10 完成页客户端交互，展示结算摘要并处理 autoAssign 跳转。  
-`MusicPlayer.tsx`: M11 音频系统组件，承载环境音切换与 lo-fi 播放器 UI。  
+`MusicPlayer.tsx`: M11 音频系统组件，承载 lo-fi 播放器 UI 与播放列表选择面板。  
+`FocusGlyphs.tsx`: Focus 模块共享 SVG 图标集合（Header / Timer / Todo / 语言切换）。  
 `CLAUDE.md`: focus 组件目录职责与边界说明。  
 
 法则
