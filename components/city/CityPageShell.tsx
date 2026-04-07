@@ -365,7 +365,8 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     setFocusToast(summary.narrative ?? "专注已结束");
 
     if (user.autoAssign && summary.resource && summary.resource !== "focus") {
-      setTimeout(() => void focus(), 3000);
+      const timer = setTimeout(() => void focus(), 3000);
+      return () => clearTimeout(timer);
     }
   }, [focus, user.autoAssign]);
 

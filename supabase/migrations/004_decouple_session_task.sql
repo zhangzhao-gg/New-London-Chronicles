@@ -198,7 +198,8 @@ begin
   set task_template_id = p_template_id,
       task_instance_id = p_instance_id,
       task_unbind_reason = null,
-      end_reason = null
+      end_reason = null,
+      last_heartbeat_at = v_now
   where id = v_session.id;
 
   return jsonb_build_object(
