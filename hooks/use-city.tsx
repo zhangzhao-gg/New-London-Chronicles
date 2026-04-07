@@ -1,6 +1,6 @@
 /**
- * [INPUT]: `GET /api/city`、`POST /api/tasks/assign-next`、当前用户初始态
- * [OUTPUT]: 城市页客户端状态 hook、30 秒轮询与 FOCUS 交互控制
+ * [INPUT]: `GET /api/city`、`POST /api/tasks/assign-next`、`POST /api/session/create`、当前用户初始态
+ * [OUTPUT]: 城市页客户端状态 hook、30 秒轮询、FOCUS 交互控制与 `freeFocus` 直接专注入口
  * [POS]: 位于 `hooks/use-city.tsx`，被 `components/city/CityPageShell.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `hooks/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -59,10 +59,12 @@ export type CityHookState = {
   city: CitySnapshot | null;
   errorMessage: string | null;
   focus: () => Promise<void>;
+  freeFocus: () => Promise<void>;
   isAssigning: boolean;
   isLoading: boolean;
   isRefreshing: boolean;
   isSavingSettings: boolean;
+  isStartingFreeFocus: boolean;
   isTaskModalOpen: boolean;
   language: string;
   setActionMessage: (message: string | null) => void;
@@ -141,6 +143,23 @@ async function persistAutoAssign(autoAssign: boolean) {
   return payload.user;
 }
 
+async function createFreeFocusSession() {
+  const response = await fetch("/api/session/create", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({}),
+  });
+
+  const payload = await readJson<{ redirectTo?: string; sessionId?: string; error?: { message?: string } }>(response);
+
+  if (!response.ok || !payload) {
+    throw new Error(getApiErrorMessage(payload, "Failed to create free focus session."));
+  }
+
+  return payload.redirectTo ?? `/focus?sessionId=${payload.sessionId}`;
+}
+
 async function assignNextTask() {
   const response = await fetch("/api/tasks/assign-next", {
     method: "POST",
@@ -189,6 +208,7 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isStartingFreeFocus, setIsStartingFreeFocus] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -306,7 +326,13 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
       }
 
       if (!user.autoAssign) {
-        setIsTaskModalOpen(true);
+        const freeFocusRedirect = await createFreeFocusSession();
+
+        if (!mountedRef.current) {
+          return;
+        }
+
+        navigateTo(freeFocusRedirect);
         return;
       }
 
@@ -353,15 +379,47 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
     }
   }, [user.autoAssign]);
 
+  const freeFocus = useCallback(async () => {
+    setActionMessage(null);
+    setIsStartingFreeFocus(true);
+
+    try {
+      const liveSessionRedirect = await fetchLiveSessionRedirect();
+
+      if (!mountedRef.current) return;
+
+      if (liveSessionRedirect) {
+        navigateTo(liveSessionRedirect);
+        return;
+      }
+
+      const redirectTo = await createFreeFocusSession();
+
+      if (!mountedRef.current) return;
+
+      navigateTo(redirectTo);
+    } catch (error) {
+      if (!mountedRef.current) return;
+
+      setActionMessage(error instanceof Error ? error.message : "Failed to start free focus.");
+    } finally {
+      if (mountedRef.current) {
+        setIsStartingFreeFocus(false);
+      }
+    }
+  }, []);
+
   return {
     actionMessage,
     city,
     errorMessage,
     focus,
+    freeFocus,
     isAssigning,
     isLoading,
     isRefreshing,
     isSavingSettings,
+    isStartingFreeFocus,
     isTaskModalOpen,
     language,
     setActionMessage,

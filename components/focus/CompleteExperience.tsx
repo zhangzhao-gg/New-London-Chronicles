@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 当前登录用户、`sessionStorage["nlc:last-summary"]`、`POST /api/tasks/assign-next`
- * [OUTPUT]: M10 完成页，展示结算摘要并在 autoAssign 开启时自动跳转下一个 `/focus`
+ * [OUTPUT]: M10 完成页，支持任务结算与自由专注两种摘要展示，autoAssign 仅对任务 session 生效
  * [POS]: 位于 `components/focus/CompleteExperience.tsx`，被 `app/complete/page.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -133,7 +133,8 @@ export function CompleteExperience({ initialUser }: { initialUser: UserDto }) {
   }, []);
 
   useEffect(() => {
-    if (!summary || !initialUser.autoAssign) {
+    /* 自由专注结束不触发 auto-assign */
+    if (!summary || !initialUser.autoAssign || summary.resource === "focus") {
       return;
     }
 
@@ -182,21 +183,25 @@ export function CompleteExperience({ initialUser }: { initialUser: UserDto }) {
         <div className="relative z-10 space-y-6">
           <div className="text-center">
             <p className="m-0 text-[0.72rem] uppercase tracking-[0.32em] text-[var(--nlc-muted)]">Session Complete</p>
-            <h1 className="m-0 mt-3 text-3xl uppercase tracking-[0.12em] text-[var(--nlc-orange)]">城市结算回执</h1>
+            <h1 className="m-0 mt-3 text-3xl uppercase tracking-[0.12em] text-[var(--nlc-orange)]">
+              {summary.resource === "focus" ? "自由专注回执" : "城市结算回执"}
+            </h1>
             <p className="m-0 mt-3 text-sm leading-7 text-[var(--nlc-muted)]">{summary.narrative}</p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className={joinClasses("grid gap-4", summary.resource === "focus" ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
             <div className="rounded-2xl border border-[rgba(244,164,98,0.14)] bg-black/18 px-4 py-4 text-center">
               <p className="m-0 text-[0.68rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">结束原因</p>
               <p className="m-0 mt-3 text-sm uppercase tracking-[0.18em] text-white">{summary.endReason}</p>
             </div>
-            <div className="rounded-2xl border border-[rgba(244,164,98,0.14)] bg-black/18 px-4 py-4 text-center">
-              <p className="m-0 text-[0.68rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">资源/进度</p>
-              <p className="m-0 mt-3 text-sm uppercase tracking-[0.18em] text-white">
-                {summary.resource} · {summary.amount}
-              </p>
-            </div>
+            {summary.resource !== "focus" ? (
+              <div className="rounded-2xl border border-[rgba(244,164,98,0.14)] bg-black/18 px-4 py-4 text-center">
+                <p className="m-0 text-[0.68rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">资源/进度</p>
+                <p className="m-0 mt-3 text-sm uppercase tracking-[0.18em] text-white">
+                  {summary.resource} · {summary.amount}
+                </p>
+              </div>
+            ) : null}
             <div className="rounded-2xl border border-[rgba(244,164,98,0.14)] bg-black/18 px-4 py-4 text-center">
               <p className="m-0 text-[0.68rem] uppercase tracking-[0.24em] text-[var(--nlc-muted)]">执行者</p>
               <p className="m-0 mt-3 text-sm uppercase tracking-[0.18em] text-white">{initialUser.username}</p>
@@ -210,7 +215,9 @@ export function CompleteExperience({ initialUser }: { initialUser: UserDto }) {
             </div>
           ) : null}
 
-          {initialUser.autoAssign ? (
+          {summary.resource === "focus" ? (
+            <SummaryNotice>自由专注已结束。你可以返回城市，或选择一项任务继续。</SummaryNotice>
+          ) : initialUser.autoAssign ? (
             <SummaryNotice tone={errorMessage ? "error" : "default"}>
               {errorMessage
                 ? errorMessage

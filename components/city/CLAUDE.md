@@ -5,7 +5,7 @@
 
 `CityPageShell.tsx`: 城市页 HUD 壳层、地图区块与状态面板展示。  
 `CityIcons.tsx`: 侧边栏导航、底部操作栏与 Header 按钮的 SVG 图标集合。  
-`DistrictModal.tsx`: M09 区块任务弹窗，消费 `/api/tasks` 并负责 join 跳转。  
+`DistrictModal.tsx`: M09 区块任务弹窗，消费 `/api/tasks` 负责 join 跳转，含"直接专注"入口。  
 `CLAUDE.md`: city 目录地图与页面展示约束。  
 
 法则

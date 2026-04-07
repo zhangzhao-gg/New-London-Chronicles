@@ -107,15 +107,24 @@ export async function GET(request: Request) {
       throw new Error("City resources row is missing.");
     }
 
-    const liveTemplateParticipants = liveSessions.reduce<Map<string, number>>((accumulator, session) => {
-      if (!session.task_instance_id) {
+    /* 只计入 active 且心跳新鲜（20 分钟内）的 session，排除僵尸 */
+    const FRESHNESS_MS = 20 * 60 * 1000;
+    const freshnessThreshold = Date.now() - FRESHNESS_MS;
+    const freshSessions = liveSessions.filter((session) => {
+      if (session.status !== "active") return false;
+      const basis = session.last_heartbeat_at ?? session.started_at ?? session.created_at;
+      return basis ? new Date(basis).getTime() >= freshnessThreshold : false;
+    });
+
+    const liveTemplateParticipants = freshSessions.reduce<Map<string, number>>((accumulator, session) => {
+      if (!session.task_instance_id && session.task_template_id) {
         accumulator.set(session.task_template_id, (accumulator.get(session.task_template_id) ?? 0) + 1);
       }
 
       return accumulator;
     }, new Map());
 
-    const liveInstanceParticipants = liveSessions.reduce<Map<string, number>>((accumulator, session) => {
+    const liveInstanceParticipants = freshSessions.reduce<Map<string, number>>((accumulator, session) => {
       if (session.task_instance_id) {
         accumulator.set(session.task_instance_id, (accumulator.get(session.task_instance_id) ?? 0) + 1);
       }

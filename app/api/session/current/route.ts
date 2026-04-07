@@ -18,19 +18,21 @@ import {
   type TaskTemplateRow,
 } from "@/lib/supabase-server";
 
-function mapSessionDto(session: SessionRow, template: TaskTemplateRow) {
+function mapSessionDto(session: SessionRow, template: TaskTemplateRow | null) {
   return {
     id: session.id,
     status: session.status,
     startedAt: session.started_at,
     lastHeartbeatAt: session.last_heartbeat_at,
-    task: {
-      templateId: template.id,
-      instanceId: session.task_instance_id,
-      type: template.type,
-      name: template.name,
-      district: template.district,
-    },
+    task: template
+      ? {
+          templateId: template.id,
+          instanceId: session.task_instance_id,
+          type: template.type,
+          name: template.name,
+          district: template.district,
+        }
+      : null,
   };
 }
 
@@ -70,6 +72,7 @@ export async function GET(request: NextRequest) {
       : includeAnyLiveSession
         ? liveSessions[0] ?? null
       : liveSessions.find((session) => {
+          if (!session.task_template_id) return false;
           const template = templateById.get(session.task_template_id);
 
           return template?.type === "build" || template?.type === "work";
@@ -92,9 +95,12 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    const template = templateById.get(matchedSession.task_template_id);
+    /* taskless session → task 为 null；有 template 但查不到 → 仅在显式请求时报 404 */
+    const template = matchedSession.task_template_id
+      ? templateById.get(matchedSession.task_template_id) ?? null
+      : null;
 
-    if (!template) {
+    if (matchedSession.task_template_id && !template) {
       if (requestedSessionId) {
         notFound("Session not found.");
       }
@@ -104,7 +110,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    if (!requestedSessionId && !includeAnyLiveSession && template.type !== "build" && template.type !== "work") {
+    if (!requestedSessionId && !includeAnyLiveSession && (!template || (template.type !== "build" && template.type !== "work"))) {
       const response = NextResponse.json({ session: null });
       appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
       return response;

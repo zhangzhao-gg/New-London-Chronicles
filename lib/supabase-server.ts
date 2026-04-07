@@ -94,7 +94,7 @@ export type TaskInstanceRow = {
 export type SessionRow = {
   id: string;
   user_id: string;
-  task_template_id: string;
+  task_template_id: string | null;
   task_instance_id: string | null;
   created_at: string;
   started_at: string | null;
@@ -102,6 +102,7 @@ export type SessionRow = {
   ended_at: string | null;
   status: "pending" | "active" | "ended";
   end_reason: string | null;
+  task_unbind_reason: string | null;
 };
 
 class RouteError extends Error {

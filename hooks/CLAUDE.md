@@ -3,8 +3,8 @@
 
 成员清单
 
-`use-city.tsx`: 城市页客户端数据拉取、30 秒轮询、自动任务开关与 FOCUS 交互状态。
-`use-heartbeat.ts`: Focus 倒计时、heartbeat 调度、localStorage 恢复与 session 结算控制。
+`use-city.tsx`: 城市页客户端数据拉取、30 秒轮询、自动任务开关、FOCUS 交互与 `freeFocus` 直接专注入口。
+`use-heartbeat.ts`: Focus 倒计时、条件性 heartbeat（有任务调 API / 无任务纯本地 tick）、`onTaskCompleted` 回调与 session 结算。
 
 法则
 

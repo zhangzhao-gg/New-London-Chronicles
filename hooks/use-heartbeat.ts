@@ -1,6 +1,6 @@
 /**
- * [INPUT]: `/focus` 页面加载到的 session、`/api/session/*` 写接口、`/api/tasks` 轮询结果
- * [OUTPUT]: Focus 倒计时、localStorage 持久化、10 分钟 heartbeat 调度与 session 结算控制
+ * [INPUT]: `FocusSession`（task 可空）、`/api/session/*` 写接口、`/api/tasks` 轮询结果
+ * [OUTPUT]: Focus 倒计时、条件性 heartbeat（有任务调 API / 无任务纯本地 tick）、`onTaskCompleted` 回调、`hasTask` 状态
  * [POS]: 位于 `hooks/use-heartbeat.ts`，被 `components/focus/FocusExperience.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `hooks/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -21,18 +21,20 @@ export type FocusServerEndReason =
   | "building_completed"
   | "timeout";
 
+export type FocusTask = {
+  templateId: string;
+  instanceId: string | null;
+  type: FocusTaskType;
+  name: string;
+  district: string;
+};
+
 export type FocusSession = {
   id: string;
   status: FocusSessionStatus;
   startedAt: string | null;
   lastHeartbeatAt: string | null;
-  task: {
-    templateId: string;
-    instanceId: string | null;
-    type: FocusTaskType;
-    name: string;
-    district: string;
-  };
+  task: FocusTask | null;
 };
 
 export type FocusSummary = {
@@ -57,18 +59,27 @@ type PersistedFocusState = {
 type HeartbeatPayload = {
   taskEnded: boolean;
   buildingCompleted: boolean;
+  completedBuildingName?: string | null;
   remainingMinutes: number;
   endReason: FocusServerEndReason | null;
+};
+
+type TaskCompletedInfo = {
+  buildingCompleted: boolean;
+  buildingName: string | null;
+  endReason: string | null;
 };
 
 type UseHeartbeatOptions = {
   session: FocusSession | null;
   onEnded: (summary: FocusSummary) => void;
+  onTaskCompleted?: (info: TaskCompletedInfo) => void;
 };
 
 type UseHeartbeatResult = {
   cycleHeartbeatCount: number;
   errorMessage: string | null;
+  hasTask: boolean;
   isEnding: boolean;
   isHeartbeatInFlight: boolean;
   isPaused: boolean;
@@ -280,10 +291,12 @@ async function pollTaskInstance(session: FocusSession) {
     throw new Error(getApiErrorMessage(payload, "Failed to poll task state."));
   }
 
+  if (!session.task) return false;
+
   return payload.tasks.some(
     (task) =>
-      task.template.id === session.task.templateId &&
-      task.instance?.id === session.task.instanceId &&
+      task.template.id === session.task!.templateId &&
+      task.instance?.id === session.task!.instanceId &&
       task.instance.remainingMinutes > 0,
   );
 }
@@ -299,7 +312,7 @@ function deriveCycleHeartbeatCountFromRemainingMs(selectedMinutes: number, remai
   return Math.floor(elapsedSeconds / HEARTBEAT_SECONDS);
 }
 
-export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHeartbeatResult {
+export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeatOptions): UseHeartbeatResult {
   const [cycleHeartbeatCount, setCycleHeartbeatCount] = useState(0);
   const [countdownEndsAtMs, setCountdownEndsAtMs] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -565,6 +578,16 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
     let cancelled = false;
 
     const runHeartbeat = async () => {
+      /* ── 无任务 → 纯本地 tick，不调 API ── */
+      if (!session.task) {
+        queuedHeartbeatCountRef.current = Math.max(0, queuedHeartbeatCountRef.current - 1);
+        cycleHeartbeatCountRef.current += 1;
+
+        setQueuedHeartbeatCount((currentCount) => Math.max(0, currentCount - 1));
+        setCycleHeartbeatCount(cycleHeartbeatCountRef.current);
+        return;
+      }
+
       setIsHeartbeatInFlight(true);
       setStatusMessage("正在同步 10 分钟 heartbeat...");
 
@@ -583,8 +606,13 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
         setErrorMessage(null);
         setStatusMessage("当前轮次 heartbeat 已同步。");
 
-        if (payload.taskEnded || payload.buildingCompleted || payload.endReason) {
-          await finishSession("timer_completed");
+        /* ── 任务完成 → 通知上层，session 继续 ── */
+        if (payload.taskEnded || payload.buildingCompleted) {
+          onTaskCompleted?.({
+            buildingCompleted: payload.buildingCompleted,
+            buildingName: payload.completedBuildingName ?? null,
+            endReason: payload.endReason,
+          });
         }
       } catch (error) {
         if (cancelled || !mountedRef.current) {
@@ -629,6 +657,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
   useEffect(() => {
     if (
       !session ||
+      !session.task ||
       remoteStatus !== "active" ||
       endingRef.current ||
       (session.task.type !== "build" && session.task.type !== "work") ||
@@ -795,6 +824,7 @@ export function useHeartbeat({ session, onEnded }: UseHeartbeatOptions): UseHear
   return {
     cycleHeartbeatCount,
     errorMessage,
+    hasTask: session?.task != null,
     isEnding,
     isHeartbeatInFlight,
     isPaused,

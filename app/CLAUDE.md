@@ -3,6 +3,7 @@
 
 成员清单
 
+`api/session/`: session 生命周期路由，含创建、恢复、心跳、结算、任务绑定/解绑。  
 `city/`: M08 城市地图页入口目录。  
 `focus/`: M10 Focus 页面入口目录。  
 `complete/`: M10 完成页入口目录。  

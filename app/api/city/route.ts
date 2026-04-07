@@ -92,7 +92,7 @@ export async function GET(request: Request) {
       return errorResponse(401, "UNAUTHORIZED", "Login required.");
     }
 
-    const [resourcesRows, templates, activeInstances, liveSessions, activeSessions, buildings, logs] = await Promise.all([
+    const [resourcesRows, templates, activeInstances, liveSessions, buildings, logs] = await Promise.all([
       selectRows<CityResourcesRow>(
         "city_resources",
         "id,coal,wood,steel,raw_food,food_supply,updated_at",
@@ -118,13 +118,6 @@ export async function GET(request: Request) {
         "id,user_id,task_template_id,task_instance_id,created_at,started_at,last_heartbeat_at,ended_at,status,end_reason",
         {
           status: "in.(pending,active)",
-        },
-      ),
-      selectRows<SessionRow>(
-        "sessions",
-        "id,user_id,task_template_id,task_instance_id,created_at,started_at,last_heartbeat_at,ended_at,status,end_reason",
-        {
-          status: "eq.active",
         },
       ),
       selectRows<BuildingRow>(
@@ -166,26 +159,28 @@ export async function GET(request: Request) {
         .map((template) => template.district),
     );
 
-    const workingCountByDistrict = activeSessions.reduce<Map<TaskTemplateRow["district"], number>>((accumulator, session) => {
-      const template = templateById.get(session.task_template_id);
+    /* 新鲜度阈值：心跳间隔 10 分钟，20 分钟内无心跳视为僵尸 */
+    const FRESHNESS_MS = 20 * 60 * 1000;
+    const freshnessThreshold = Date.now() - FRESHNESS_MS;
 
-      if (!template) {
-        return accumulator;
-      }
+    function isSessionFresh(session: SessionRow) {
+      const basis = session.last_heartbeat_at ?? session.started_at ?? session.created_at;
+      return basis ? new Date(basis).getTime() >= freshnessThreshold : false;
+    }
+
+    const workingCountByDistrict = liveSessions.reduce<Map<TaskTemplateRow["district"], number>>((accumulator, session) => {
+      if (session.status !== "active" || !isSessionFresh(session)) return accumulator;
+      if (!session.task_template_id) return accumulator;
+
+      const template = templateById.get(session.task_template_id);
+      if (!template) return accumulator;
 
       accumulator.set(template.district, (accumulator.get(template.district) ?? 0) + 1);
       return accumulator;
     }, new Map());
 
-    const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
     const onlineUsers = new Set(
-      liveSessions
-        .filter((session) => {
-          const basis = session.last_heartbeat_at ?? session.started_at ?? session.created_at;
-
-          return new Date(basis).getTime() >= thirtyMinutesAgo;
-        })
-        .map((session) => session.user_id),
+      liveSessions.filter(isSessionFresh).map((session) => session.user_id),
     );
 
     const districts = DISTRICT_ORDER.map((district) => ({

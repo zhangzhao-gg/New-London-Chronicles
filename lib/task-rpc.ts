@@ -58,6 +58,14 @@ type AssignNextRpcResult = {
   district: string;
 };
 
+type BindTaskRpcResult = {
+  templateId: string;
+  instanceId: string | null;
+  taskName: string;
+  taskType: TaskType;
+  district: string;
+};
+
 type HeartbeatResources = {
   coal: number;
   wood: number;
@@ -595,6 +603,7 @@ export async function heartbeatSession(userId: string, sessionId: string) {
     contribution: normalizeContribution(row.contribution),
     taskEnded: Boolean(row.task_ended),
     buildingCompleted: Boolean(row.building_completed),
+    completedBuildingName: row.completed_building_name ?? null,
     remainingMinutes: Number(row.remaining_minutes ?? 0),
     endReason: row.end_reason,
   };
@@ -613,6 +622,72 @@ export async function endSession(userId: string, sessionId: string, endReason: C
 
   return {
     summary,
+  };
+}
+
+export async function createFreeSession(userId: string) {
+  const sessionId = await callRpc<string>("rpc_create_free_session", {
+    p_user_id: userId,
+  });
+
+  return {
+    sessionId,
+    status: "pending" as const,
+    task: null,
+    redirectTo: `/focus?sessionId=${sessionId}`,
+  };
+}
+
+export async function bindTask(input: {
+  userId: string;
+  sessionId: string;
+  templateId: string;
+  instanceId: string | null;
+}) {
+  const result = await callRpc<BindTaskRpcResult>("rpc_bind_task", {
+    p_user_id: input.userId,
+    p_session_id: input.sessionId,
+    p_template_id: input.templateId,
+    p_instance_id: input.instanceId,
+  });
+
+  return {
+    ok: true as const,
+    task: {
+      templateId: result.templateId,
+      instanceId: result.instanceId,
+      type: result.taskType,
+      name: result.taskName,
+      district: result.district,
+    },
+  };
+}
+
+export async function unbindTask(userId: string, sessionId: string, reason = "manual_unbind") {
+  await callRpc<null>("rpc_unbind_task", {
+    p_user_id: userId,
+    p_session_id: sessionId,
+    p_unbind_reason: reason,
+  });
+
+  return { ok: true as const };
+}
+
+export async function assignNextTaskToSession(userId: string, sessionId: string) {
+  const result = await callRpc<BindTaskRpcResult>("rpc_assign_next_task_to_session", {
+    p_user_id: userId,
+    p_session_id: sessionId,
+  });
+
+  return {
+    ok: true as const,
+    task: {
+      templateId: result.templateId,
+      instanceId: result.instanceId,
+      type: result.taskType,
+      name: result.taskName,
+      district: result.district,
+    },
   };
 }
 
