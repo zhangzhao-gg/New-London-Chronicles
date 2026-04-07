@@ -395,6 +395,11 @@ export class AudioManager {
     const nextTrack = tracks[index] ?? null;
 
     if (!nextTrack) {
+      if (this.musicElement) {
+        this.musicElement.pause();
+        this.musicElement.src = "";
+        this.musicElement.load();
+      }
       this.updateSnapshot({ activeTrack: null, activeTrackIndex: 0, isMusicPlaying: false, isMusicReady: false });
       return;
     }

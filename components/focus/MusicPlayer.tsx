@@ -1,5 +1,5 @@
 /**
- * [INPUT]: `lib/audio.ts` 的 AudioManager / PLAYLISTS / AudioSnapshot，`UI/focus.html` 底部播放器原型
+ * [INPUT]: `lib/audio.ts` 的 AudioManager / PLAYLISTS / AudioSnapshot，`FocusGlyphs` 的 PlaylistGlyph / THEME_ICON_SVG
  * [OUTPUT]: Focus 模块底部播放器 + 播放列表选择面板
  * [POS]: 位于 `components/focus/MusicPlayer.tsx`，被 `FocusExperience` 挂载
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md` 与上级 `CLAUDE.md`
@@ -9,7 +9,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import { getAudioManager, PLAYLISTS, type PlaylistIcon as PlaylistIconType } from "@/lib/audio";
+import { PlaylistGlyph, THEME_ICON_SVG } from "@/components/focus/FocusGlyphs";
+import { getAudioManager, PLAYLISTS } from "@/lib/audio";
 
 /* ─── 工具 ─── */
 
@@ -67,44 +68,6 @@ function EqualizerIcon() {
   );
 }
 
-function PlaylistIcon() {
-  return (
-    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M4 6h12" />
-      <path d="M4 10h12" />
-      <path d="M4 14h8" />
-      <path d="M16 13v6l5-3-5-3Z" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-/* ─── 播放列表氛围图标 ─── */
-
-const THEME_ICON_SVG: Record<PlaylistIconType, React.ReactNode> = {
-  flame: (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none">
-      <path d="M12 3C9 6.5 7.5 9 7.5 12.1A4.5 4.5 0 0 0 12 16.5a4.5 4.5 0 0 0 4.5-4.4C16.5 9 15 6.5 12 3Z" fill="currentColor" opacity="0.9" />
-      <path d="M12 10.5c-1.2 1.2-1.8 2.1-1.8 3.1a1.8 1.8 0 1 0 3.6 0c0-1-.6-1.9-1.8-3.1Z" fill="#221810" />
-    </svg>
-  ),
-  snowflake: (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 3.75 13.35 7.2l3.7-1.2-2 3.35 3.45 1.25-3.45 1.25 2 3.35-3.7-1.2L12 17.75l-1.35-3.4-3.7 1.2 2-3.35-3.45-1.25 3.45-1.25-2-3.35 3.7 1.2L12 3.75Z"
-        fill="currentColor"
-        opacity="0.9"
-      />
-    </svg>
-  ),
-  globe: (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z" />
-      <path d="M12 3c-1.8 2-3 5-3 9s1.2 7 3 9" />
-      <path d="M12 3c1.8 2 3 5 3 9s-1.2 7-3 9" />
-      <path d="M3.5 9h17M3.5 15h17" />
-    </svg>
-  ),
-};
 
 /* ─── 播放列表面板（纯渲染，click-outside 由父级处理） ─── */
 
@@ -295,7 +258,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
               onClick={() => setShowPlaylist((v) => !v)}
               type="button"
             >
-              <PlaylistIcon />
+              <PlaylistGlyph />
             </button>
             {showPlaylist ? (
               <PlaylistPanel

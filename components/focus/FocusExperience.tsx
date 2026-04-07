@@ -49,9 +49,7 @@ type AmbientOption = {
 
 const FOCUS_BACKGROUND_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCp_o98ut-RPMAIQXKRSfdH7l98-uHemKQHFyZI8BRqWMN196ZvPYC4JxscN7ESJO19-cC6i0sIMHPFBikoMQQvbcaL9VNIj5Zc3Z-ncYcXgBUhnYyJP1zXOL60nuMd8qC2HFpm7vhTvYKV19YIbbY_58QCHGK0c49raa7RobBlMhN-A2tRCCx-TN6DaYhtNYk_Xu0G9OewQfYsFbSVzyL_lu8-Cc0XAalcofXioRE2iNbf3zvFucA01x8RUD0tZ_IgUj7V0L1LfIM";
-
-const ADMIN_AVATAR_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCwRgeTWQVVdMFnNCD6g_DG-XCqove2SCd0dwbELK8C990veMZd4f2osXDxyOAVWpIahzU_XHpKvLXcBEg-nhecKW2Ox1Mjta8CGx4gYKPxLgijQpHiBdxwiLQ2MHXmqQYwt6NUKTVXeFvrZSwUaIGTxHGLCqxYwvzE-ejy8Xth-uFhNySGEuil7SHO6bIXcgr26bu8zfGaa558rEkzz1ZYX0YxrbwqVpTleBR4ic0qjGyoZ2NqpNM9StQT3WuMTlANUlEfrqhQgQo";
+const ADMIN_AVATAR_URL = "/images/admin-avatar.jpg";
 
 const districtLabels: Record<string, string> = {
   exploration: "Exploration Outpost",
@@ -291,10 +289,13 @@ export function FocusExperience({
   const [newTodoText, setNewTodoText] = useState("");
   const [isAddingTodo, setIsAddingTodo] = useState(false);
   const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(new Set());
-  const [locale, setLocaleState] = useState<Locale>(() => getSavedLocale());
+  const [locale, setLocaleState] = useState<Locale>("zh-CN");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
+
+  /* ── mount 后同步 localStorage locale，避免 SSR hydration mismatch ── */
+  useEffect(() => { setLocaleState(getSavedLocale()); }, []);
 
   useEffect(() => {
     let cancelled = false;
