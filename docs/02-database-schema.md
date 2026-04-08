@@ -102,8 +102,17 @@ create table public.task_participants (
 create table public.sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
-  task_template_id uuid not null references public.task_templates(id) on delete restrict,
+  task_template_id uuid references public.task_templates(id) on delete restrict,
   task_instance_id uuid references public.task_instances(id) on delete set null,
+  task_unbind_reason text
+    check (
+      task_unbind_reason is null
+      or task_unbind_reason in (
+        'task_completed',
+        'resource_exhausted',
+        'manual_unbind'
+      )
+    ),
   created_at timestamptz not null default timezone('utc', now()),
   started_at timestamptz,
   last_heartbeat_at timestamptz,
@@ -237,6 +246,10 @@ insert into public.city_resources (
 - `rpc_session_heartbeat(p_user_id uuid, p_session_id uuid)`
 - `rpc_end_session(p_user_id uuid, p_session_id uuid, p_end_reason text default null)`
 - `rpc_assign_next_task(p_user_id uuid) returns jsonb`
+- `rpc_create_free_session(p_user_id uuid) returns uuid`
+- `rpc_bind_task(p_user_id uuid, p_session_id uuid, p_template_id uuid, p_instance_id uuid default null) returns jsonb`
+- `rpc_unbind_task(p_user_id uuid, p_session_id uuid, p_unbind_reason text default 'manual_unbind') returns void`
+- `rpc_assign_next_task_to_session(p_user_id uuid, p_session_id uuid) returns jsonb`
 - ~~`rpc_task_strategy_tick()`~~ — 已移除，建造补位改由 `POST /api/tasks/strategy` 在应用层执行
 - ~~`rpc_daily_city_upkeep()`~~ — 已移除，城市消耗改由 `lib/cron.ts` 应用层 fallback 执行
 

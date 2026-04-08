@@ -5,6 +5,8 @@
 
 `001_create_tables.sql`: 创建扩展、8 张业务表与全部索引。  
 `002_seed_task_templates.sql`: 写入 13 条 `task_templates` 模板种子。  
+`003_task_rpc.sql`: 5 个核心 RPC（join_task、assign_next_task、start/heartbeat/end_session）与辅助函数。  
+`004_decouple_session_task.sql`: 解耦专注与任务 — schema 变更 + 4 个新 RPC + 3 个 RPC 重写。  
 `CLAUDE.md`: migrations 目录地图，维护迁移编号与职责说明。  
 
 法则

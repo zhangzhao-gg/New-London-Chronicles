@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 当前登录用户、`/api/session/current`、`use-heartbeat`、`MusicPlayer`、`lib/i18n` 语言切换
- * [OUTPUT]: M10 Focus 主界面，负责恢复 session、驱动倒计时、语言切换、结算后跳转 `/complete`
+ * [INPUT]: 当前登录用户、`/api/session/current`、`use-heartbeat`、`MusicPlayer`、`lib/i18n`、`/api/session/assign-next-task`
+ * [OUTPUT]: M10 Focus 主界面，支持有任务/Free Focus 两态，语言切换，任务完成通知与 auto-assign
  * [POS]: 位于 `components/focus/FocusExperience.tsx`，被 `app/focus/page.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -28,6 +28,7 @@ import {
   type FocusSession,
   type FocusSessionStatus,
   type FocusSummary,
+  type FocusTask,
 } from "@/hooks/use-heartbeat";
 
 type SessionResponse = {
@@ -342,6 +343,65 @@ export function FocusExperience({
     setTodos(loadTodos(storageKey));
   }, [storageKey]);
 
+  const [taskCompletedNotice, setTaskCompletedNotice] = useState<string | null>(null);
+
+  const handleTaskCompleted = useCallback(
+    async (info: { buildingCompleted: boolean; buildingName: string | null; endReason: string | null }) => {
+      /* 更新本地 session 状态：任务已解绑 */
+      setSession((prev) => (prev ? { ...prev, task: null } : null));
+
+      /* 显示通知 */
+      const message = info.buildingCompleted
+        ? `建造完成：${info.buildingName ?? "新建筑已落成"}`
+        : info.endReason === "resource_exhausted"
+          ? "资源不足，任务已中止"
+          : "任务已完成";
+
+      setTaskCompletedNotice(message);
+
+      /* auto-assign：绑定下一个任务 */
+      if (initialUser.autoAssign && session) {
+        try {
+          const response = await fetch("/api/session/assign-next-task", {
+            method: "POST",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ sessionId: session.id }),
+          });
+
+          const payload = await readJson<{
+            ok?: boolean;
+            task?: FocusTask;
+            error?: { message?: string };
+          }>(response);
+
+          const nextTask = response.ok ? payload?.task : null;
+
+          if (nextTask) {
+            setSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    task: {
+                      templateId: nextTask.templateId,
+                      instanceId: nextTask.instanceId,
+                      type: nextTask.type,
+                      name: nextTask.name,
+                      district: nextTask.district,
+                    },
+                  }
+                : null,
+            );
+            setTaskCompletedNotice((prev) => `${prev} → 已自动绑定：${nextTask.name}`);
+          }
+        } catch {
+          /* 无可分配任务，继续自由专注 */
+        }
+      }
+    },
+    [initialUser.autoAssign, session],
+  );
+
   useEffect(() => {
     if (!showLangMenu) return;
     function handleClick(e: MouseEvent) {
@@ -371,9 +431,10 @@ export function FocusExperience({
     resetTimer,
   } = useHeartbeat({
     onEnded(summary: FocusSummary) {
-      window.sessionStorage.setItem("nlc:last-summary", JSON.stringify(summary));
-      navigateTo("/complete", { replace: true });
+      window.sessionStorage.setItem("nlc:focus-ended-toast", JSON.stringify(summary));
+      navigateTo("/city", { replace: true });
     },
+    onTaskCompleted: handleTaskCompleted,
     session,
   });
 
@@ -414,7 +475,7 @@ export function FocusExperience({
   const currentErrorMessage = errorMessage ?? heartbeatErrorMessage;
   const isSessionReady = !isLoading && session != null;
   const canEditDuration = remoteStatus === "pending" || (remoteStatus === "active" && isPaused);
-  const districtLabel = session ? districtLabels[session.task.district] ?? session.task.district : "Unknown district";
+  const districtLabel = session?.task ? districtLabels[session.task.district] ?? session.task.district : "Free Focus";
   const previewMinutes = Number(selectedMinutesInput);
   const displaySeconds =
     remainingSeconds ??
@@ -430,10 +491,11 @@ export function FocusExperience({
     [isPaused, remoteStatus],
   );
 
-  const objectiveSummary = session ? session.task.name : "Awaiting current objective";
+  const objectiveSummary = session?.task ? session.task.name : "自由专注";
   const systemStatus = remoteStatus === "active" ? "System Active" : isLoading ? "System Restoring" : "System Idle";
   const notices = [
     isLoading ? { key: "loading", tone: "default" as const, message: "Restoring current session..." } : null,
+    taskCompletedNotice ? { key: "task-completed", tone: "warn" as const, message: taskCompletedNotice } : null,
     statusMessage ? { key: "status", tone: "default" as const, message: statusMessage } : null,
     currentErrorMessage ? { key: "error", tone: "error" as const, message: currentErrorMessage } : null,
     restoredSessionNeedsDuration

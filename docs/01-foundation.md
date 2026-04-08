@@ -56,7 +56,6 @@
 │  │  └─ internal/city/upkeep/route.ts
 │  ├─ city/page.tsx
 │  ├─ focus/page.tsx
-│  ├─ complete/page.tsx
 │  ├─ globals.css
 │  ├─ layout.tsx
 │  └─ page.tsx

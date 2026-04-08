@@ -15,7 +15,7 @@ import {
   resolveAuthSessionFromRequest,
 } from "@/lib/auth";
 
-const PROTECTED_PAGES = new Set(["/city", "/focus", "/complete"]);
+const PROTECTED_PAGES = new Set(["/city", "/focus"]);
 const PUBLIC_API_PREFIXES = ["/api/auth/login", "/api/internal/"];
 
 function isProtectedPage(pathname: string): boolean {

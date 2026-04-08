@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 当前选中区块、`GET /api/tasks` 结果、`POST /api/tasks/join` 跳转返回
- * [OUTPUT]: M09 区块任务弹窗，展示区块任务列表并负责加入任务跳转到 `/focus`
+ * [INPUT]: 当前选中区块、`GET /api/tasks`、`GET /api/session/current`、`POST /api/tasks/join`、`POST /api/session/bind-task`、`onFreeFocus`
+ * [OUTPUT]: M09 区块任务弹窗，展示任务列表、新建/绑定任务、"直接专注"入口，含 live session 感知
  * [POS]: 位于 `components/city/DistrictModal.tsx`，被 `components/city/CityPageShell.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/city/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -47,7 +47,9 @@ type TaskListItem = {
 
 type DistrictModalProps = {
   district: CityDistrict | null;
+  isStartingFreeFocus?: boolean;
   onClose: () => void;
+  onFreeFocus?: () => void;
   open: boolean;
 };
 
@@ -152,6 +154,55 @@ async function joinTask(task: TaskListItem) {
   return payload;
 }
 
+/* ------------------------------------------------------------------ */
+/*  live session 侦测 + 任务绑定                                      */
+/* ------------------------------------------------------------------ */
+
+type LiveSessionInfo = {
+  id: string;
+  task: { templateId: string; instanceId: string | null } | null;
+};
+
+async function fetchLiveSession(): Promise<LiveSessionInfo | null> {
+  const response = await fetch("/api/session/current?any=1", {
+    method: "GET",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) return null;
+
+  const payload = await readJson<{ session?: LiveSessionInfo | null }>(response);
+  return payload?.session ?? null;
+}
+
+async function bindTaskToSession(sessionId: string, task: TaskListItem) {
+  const response = await fetch("/api/session/bind-task", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sessionId,
+      templateId: task.template.id,
+      instanceId: task.instance?.id ?? null,
+    }),
+  });
+
+  const payload = await readJson<{ ok?: boolean; error?: { code?: string; message?: string } }>(response);
+
+  if (!response.ok || !payload?.ok) {
+    throw new DistrictModalApiError(
+      getApiErrorMessage(payload, "Failed to bind task."),
+      payload?.error?.code ?? null,
+    );
+  }
+
+  return payload;
+}
+
 function formatCostSummary(costs: Record<string, number>) {
   const entries = Object.entries(costs);
 
@@ -200,7 +251,9 @@ function formatDisabledReason(task: TaskListItem) {
   return null;
 }
 
-function ConflictToast({ message, onDone }: { message: string; onDone: () => void }) {
+type ToastTone = "warn" | "success";
+
+function ModalToast({ message, tone, onDone }: { message: string; tone: ToastTone; onDone: () => void }) {
   const [exiting, setExiting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -215,10 +268,15 @@ function ConflictToast({ message, onDone }: { message: string; onDone: () => voi
     return () => clearTimeout(id);
   }, [exiting, onDone]);
 
+  const isSuccess = tone === "success";
+
   return createPortal(
     <div
       className={joinClasses(
-        "fixed right-4 top-4 z-[9999] max-w-sm rounded-sm border border-amber-500/40 bg-[rgba(8,5,4,0.94)] px-5 py-3.5 text-[0.74rem] leading-5 text-amber-100 shadow-[0_18px_36px_rgba(120,53,15,0.32)] backdrop-blur-sm sm:right-6 sm:top-5",
+        "fixed right-4 top-4 z-[9999] max-w-sm rounded-sm border px-5 py-3.5 text-[0.74rem] leading-5 backdrop-blur-sm sm:right-6 sm:top-5",
+        isSuccess
+          ? "border-emerald-500/40 bg-[rgba(4,8,5,0.94)] text-emerald-100 shadow-[0_18px_36px_rgba(16,185,129,0.24)]"
+          : "border-amber-500/40 bg-[rgba(8,5,4,0.94)] text-amber-100 shadow-[0_18px_36px_rgba(120,53,15,0.32)]",
         exiting ? "nlc-toast-exit" : "nlc-toast-enter",
       )}
       role="alert"
@@ -229,16 +287,18 @@ function ConflictToast({ message, onDone }: { message: string; onDone: () => voi
   );
 }
 
-export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
+export function DistrictModal({ district, isStartingFreeFocus = false, onClose, onFreeFocus, open }: DistrictModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isJoiningTaskKey, setIsJoiningTaskKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
-  const [conflictToast, setConflictToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: ToastTone } | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
+  const [boundTaskKey, setBoundTaskKey] = useState<string | null>(null);
   const shakeTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const dismissToast = useCallback(() => setConflictToast(null), []);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   function triggerShake() {
     setIsShaking(true);
@@ -248,6 +308,8 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
 
   useEffect(() => {
     if (!open) {
+      setLiveSessionId(null);
+      setBoundTaskKey(null);
       return;
     }
 
@@ -258,10 +320,21 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
       setErrorMessage(null);
 
       try {
-        const nextTasks = await fetchTasks();
+        const [nextTasks, liveSession] = await Promise.all([
+          fetchTasks(),
+          fetchLiveSession().catch(() => null),
+        ]);
 
         if (!cancelled) {
           setTasks(nextTasks);
+
+          if (liveSession) {
+            setLiveSessionId(liveSession.id);
+
+            if (liveSession.task) {
+              setBoundTaskKey(`${liveSession.task.templateId}:${liveSession.task.instanceId ?? "template"}`);
+            }
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -288,6 +361,30 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
 
   const copy = district ? districtCopy[district.district] : null;
 
+  async function handleBind(task: TaskListItem) {
+    if (!liveSessionId) return;
+
+    const taskKey = `${task.template.id}:${task.instance?.id ?? "template"}`;
+    setErrorMessage(null);
+    setIsJoiningTaskKey(taskKey);
+
+    try {
+      await bindTaskToSession(liveSessionId, task);
+      setBoundTaskKey(taskKey);
+      setToast({ message: `OK → 开始${task.template.name}`, tone: "success" });
+    } catch (error) {
+      if (error instanceof DistrictModalApiError && error.code === "CONFLICT") {
+        setToast({ message: error.message, tone: "warn" });
+        triggerShake();
+        return;
+      }
+
+      setErrorMessage(error instanceof Error ? error.message : "Failed to bind task.");
+    } finally {
+      setIsJoiningTaskKey(null);
+    }
+  }
+
   async function handleJoin(task: TaskListItem) {
     const taskKey = `${task.template.id}:${task.instance?.id ?? "template"}`;
     setErrorMessage(null);
@@ -299,8 +396,7 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
       navigateTo(payload.redirectTo ?? `/focus?sessionId=${payload.sessionId}`);
     } catch (error) {
       if (error instanceof DistrictModalApiError && error.code === "CONFLICT") {
-        const msg = "你已经有工作了，请先完成当前专注任务。";
-        setConflictToast(msg);
+        setToast({ message: "你已经有工作了，请先完成当前专注任务。", tone: "warn" });
         triggerShake();
         return;
       }
@@ -313,7 +409,7 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
 
   return (
     <>
-    {conflictToast ? <ConflictToast message={conflictToast} onDone={dismissToast} /> : null}
+    {toast ? <ModalToast message={toast.message} onDone={dismissToast} tone={toast.tone} /> : null}
     <Modal
       description={district ? `${district.label} · ${copy?.subtitle ?? ""}` : "请选择一个区块后查看可用任务。"}
       panelClassName={isShaking ? "nlc-shake" : undefined}
@@ -322,9 +418,16 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
           <span className="text-xs uppercase tracking-[0.2em] text-[var(--nlc-muted)]">
             {district ? `Workers ${district.workingCount}` : "District unavailable"}
           </span>
-          <Button onClick={onClose} variant="ghost">
-            返回城市
-          </Button>
+          <div className="flex items-center gap-2">
+            {onFreeFocus ? (
+              <Button disabled={isStartingFreeFocus} onClick={onFreeFocus} variant="secondary">
+                {isStartingFreeFocus ? "启动中…" : "直接专注"}
+              </Button>
+            ) : null}
+            <Button onClick={onClose} variant="ghost">
+              返回城市
+            </Button>
+          </div>
         </div>
       }
       onClose={onClose}
@@ -385,6 +488,7 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
                 const taskKey = `${task.template.id}:${task.instance?.id ?? "template"}`;
                 const disabledReason = formatDisabledReason(task);
                 const isJoining = isJoiningTaskKey === taskKey;
+                const isBound = boundTaskKey === taskKey;
                 const featured = index === 0 && task.canJoin;
 
                 return (
@@ -452,16 +556,21 @@ export function DistrictModal({ district, onClose, open }: DistrictModalProps) {
                     <button
                       className={joinClasses(
                         "shrink-0 font-bold uppercase tracking-wider transition-all",
-                        featured
-                          ? "border-2 border-[var(--nlc-orange)] bg-[var(--nlc-orange)] px-8 py-3 text-xs text-[var(--nlc-dark)] hover:bg-transparent hover:text-[var(--nlc-orange)]"
-                          : "border border-[rgba(244,164,98,0.6)] px-6 py-2 text-[10px] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.2)]",
-                        (!task.canJoin || isJoining) && "pointer-events-none opacity-40",
+                        isBound
+                          ? joinClasses(
+                              "border-2 border-emerald-500 bg-emerald-500/20 text-emerald-200",
+                              featured ? "px-8 py-3 text-xs" : "px-6 py-2 text-[10px]",
+                            )
+                          : featured
+                            ? "border-2 border-[var(--nlc-orange)] bg-[var(--nlc-orange)] px-8 py-3 text-xs text-[var(--nlc-dark)] hover:bg-transparent hover:text-[var(--nlc-orange)]"
+                            : "border border-[rgba(244,164,98,0.6)] px-6 py-2 text-[10px] text-[var(--nlc-orange)] hover:bg-[rgba(244,164,98,0.2)]",
+                        !isBound && (!task.canJoin || isJoining) && "pointer-events-none opacity-40",
                       )}
-                      disabled={!task.canJoin || isJoining}
-                      onClick={() => void handleJoin(task)}
+                      disabled={isBound || !task.canJoin || isJoining}
+                      onClick={() => void (liveSessionId ? handleBind(task) : handleJoin(task))}
                       type="button"
                     >
-                      {isJoining ? "Joining" : task.actionLabel}
+                      {isBound ? "正在工作中" : isJoining ? "Joining" : task.actionLabel}
                     </button>
                   </article>
                 );

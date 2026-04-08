@@ -1,6 +1,6 @@
 /**
- * [INPUT]: `useCity(initialUser, initialCity)`、`@/components/ui/*`、`UI/city.html`
- * [OUTPUT]: 城市页客户端 HUD 壳层、区块地图与状态面板展示
+ * [INPUT]: `useCity(initialUser, initialCity)`、`@/components/ui/*`、`UI/city.html`、`sessionStorage["nlc:focus-ended-toast"]`
+ * [OUTPUT]: 城市页客户端 HUD 壳层、区块地图、状态面板与专注结束 toast 通知
  * [POS]: 位于 `components/city/CityPageShell.tsx`，被 `app/city/page.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/city/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 
 import {
@@ -303,10 +304,12 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     city,
     errorMessage,
     focus,
+    freeFocus,
     isAssigning,
     isLoading,
     isRefreshing,
     isSavingSettings,
+    isStartingFreeFocus,
     isTaskModalOpen,
     language,
     setActionMessage,
@@ -319,6 +322,9 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
   const [activeDistrictKey, setActiveDistrictKey] = useState<DistrictKey | null>(null);
   const [hasHandledOpenTasksQuery, setHasHandledOpenTasksQuery] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [focusToast, setFocusToast] = useState<string | null>(null);
+  const [focusToastExiting, setFocusToastExiting] = useState(false);
+  const focusEndedConsumedRef = useRef(false);
 
   const locale = (language === "en-US" ? "en-US" : "zh-CN") as Locale;
 
@@ -344,6 +350,32 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ─── 消费 focus 结束 toast ─── */
+  useEffect(() => {
+    if (focusEndedConsumedRef.current) return;
+    const raw = sessionStorage.getItem("nlc:focus-ended-toast");
+    if (!raw) return;
+    focusEndedConsumedRef.current = true;
+    sessionStorage.removeItem("nlc:focus-ended-toast");
+
+    let summary: { narrative?: string; resource?: string };
+    try { summary = JSON.parse(raw); } catch { return; }
+
+    setFocusToast(summary.narrative ?? "专注已结束");
+
+    if (user.autoAssign && summary.resource && summary.resource !== "focus") {
+      const timer = setTimeout(() => void focus(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [focus, user.autoAssign]);
+
+  useEffect(() => {
+    if (!focusToast) return;
+    const t1 = setTimeout(() => setFocusToastExiting(true), 3500);
+    const t2 = setTimeout(() => { setFocusToast(null); setFocusToastExiting(false); }, 3740);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [focusToast]);
 
   const resources = useMemo(() => resourceRows(city), [city]);
   const districts = city?.districts ?? [];
@@ -751,7 +783,12 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
 
       <footer className="h-1 bg-[rgba(244,164,98,0.42)] shadow-[0_0_12px_rgba(244,164,98,0.46)]" />
 
-      <DistrictModal district={activeDistrict} onClose={() => setIsTaskModalOpen(false)} open={isTaskModalOpen} />
+      {focusToast ? createPortal(
+        <div className={joinClasses("fixed right-4 top-4 z-[9999] max-w-sm rounded-sm border border-emerald-500/40 bg-[rgba(4,8,5,0.94)] px-5 py-3.5 text-[0.74rem] leading-5 text-emerald-100 shadow-[0_18px_36px_rgba(16,185,129,0.24)] backdrop-blur-sm sm:right-6 sm:top-5", focusToastExiting ? "nlc-toast-exit" : "nlc-toast-enter")} role="alert">{focusToast}</div>,
+        document.body,
+      ) : null}
+
+      <DistrictModal district={activeDistrict} isStartingFreeFocus={isStartingFreeFocus} onClose={() => setIsTaskModalOpen(false)} onFreeFocus={() => { setIsTaskModalOpen(false); void freeFocus(); }} open={isTaskModalOpen} />
     </div>
   );
 }
