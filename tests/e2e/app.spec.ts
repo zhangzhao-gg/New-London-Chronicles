@@ -216,19 +216,6 @@ test.describe.serial("real user flows", () => {
     }
   });
 
-  test("complete page without summary falls back to city", async ({ page }) => {
-    const username = uniqueUsername("complete-fallback");
-
-    try {
-      await login(page, username);
-      await page.goto("/complete", { waitUntil: "domcontentloaded" });
-      await expect.poll(() => page.url(), { timeout: 15_000 }).toContain("/city");
-      await expect(page.getByRole("heading", { name: "New London" })).toBeVisible();
-    } finally {
-      await cleanupUser(username);
-    }
-  });
-
   test("city hover, modal task list, focus timer controls, manual stop and city return all work", async ({ page }) => {
     const username = uniqueUsername("manual");
 
@@ -299,8 +286,7 @@ test.describe.serial("real user flows", () => {
       await expect(page.locator("text=02:00")).toBeVisible();
 
       await page.getByRole("button", { name: "手动停止" }).click();
-      await page.waitForURL("**/complete");
-      await expect(page.getByText("MANUAL_STOP")).toBeVisible();
+      await page.waitForURL("**/city");
 
       const endedSession = await getSession(sessionId!);
       expect(endedSession.end_reason).toBe("manual_stop");
@@ -312,13 +298,6 @@ test.describe.serial("real user flows", () => {
       }>(page, { url: "/api/city" })).body;
       expect(updatedCity.resources.coal).toBeGreaterThanOrEqual(initialCity.resources.coal + 20);
       expect(updatedCity.logs.some((entry) => entry.userLabel === username)).toBeTruthy();
-
-      await page.getByRole("button", { name: "选择下一个任务" }).click();
-      await page.waitForURL("**/city?openTasks=1");
-      await expect(page.getByRole("dialog")).toBeVisible();
-
-      await page.getByRole("button", { name: "返回城市" }).click();
-      await expect(page).toHaveURL(/\/city\?openTasks=1$/);
     } finally {
       await cleanupUser(username);
     }
@@ -349,8 +328,7 @@ test.describe.serial("real user flows", () => {
       await expect(page.getByText("00:30")).toBeVisible();
       await page.clock.runFor("00:30");
       await page.clock.resume();
-      await page.waitForURL("**/complete", { timeout: 15_000 });
-      await expect(page.getByText("TIMER_COMPLETED")).toBeVisible();
+      await page.waitForURL("**/city", { timeout: 15_000 });
 
       const endedSession = await pollSession(sessionId!, (session) => session.status === "ended");
       expect(endedSession.end_reason).toBe("timer_completed");
@@ -404,8 +382,7 @@ test.describe.serial("real user flows", () => {
       await expect(page.getByRole("button", { name: "暂停", exact: true })).toBeVisible();
       await page.clock.runFor("10:00");
       await page.clock.resume();
-      await page.waitForURL("**/complete", { timeout: 20_000 });
-      await expect(page.getByText("BUILDING_COMPLETED")).toBeVisible();
+      await page.waitForURL("**/city", { timeout: 20_000 });
     } finally {
       await cleanupUser(username);
       if (createdInstanceId) {

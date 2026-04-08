@@ -3,8 +3,7 @@
 
 成员清单
 
-`FocusExperience.tsx`: M10 Focus 主界面，支持有任务/Free Focus 两态，任务完成通知与 auto-assign。  
-`CompleteExperience.tsx`: M10 完成页客户端交互，支持任务结算与自由专注摘要，autoAssign 仅对任务 session 生效。  
+`FocusExperience.tsx`: M10 Focus 主界面，支持有任务/Free Focus 两态，任务完成通知与 auto-assign，结束时写 toast 摘要并导航回 city。  
 `MusicPlayer.tsx`: M11 音频系统组件，承载环境音切换与 lo-fi 播放器 UI。  
 `CLAUDE.md`: focus 组件目录职责与边界说明。  
 

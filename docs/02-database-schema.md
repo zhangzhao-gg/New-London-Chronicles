@@ -102,8 +102,17 @@ create table public.task_participants (
 create table public.sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
-  task_template_id uuid not null references public.task_templates(id) on delete restrict,
+  task_template_id uuid references public.task_templates(id) on delete restrict,
   task_instance_id uuid references public.task_instances(id) on delete set null,
+  task_unbind_reason text
+    check (
+      task_unbind_reason is null
+      or task_unbind_reason in (
+        'task_completed',
+        'resource_exhausted',
+        'manual_unbind'
+      )
+    ),
   created_at timestamptz not null default timezone('utc', now()),
   started_at timestamptz,
   last_heartbeat_at timestamptz,

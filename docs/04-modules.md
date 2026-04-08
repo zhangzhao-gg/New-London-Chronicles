@@ -163,27 +163,26 @@
   - 成功后跳转 `/focus?sessionId=...`
 - 依赖：M03、M04、M06
 
-## M10 — 专注页 + 完成页
+## M10 — 专注页
 
-- 交付物：`app/focus/page.tsx`、`app/complete/page.tsx`、`hooks/use-heartbeat.ts`
-- 输入：`sessionId`、`GET /api/session/current`、`POST /api/session/start`、`POST /api/session/heartbeat`、`POST /api/session/end`、`POST /api/tasks/assign-next`
-- 输出：倒计时、任务结算页
+- 交付物：`app/focus/page.tsx`、`hooks/use-heartbeat.ts`
+- 输入：`sessionId`、`GET /api/session/current`、`POST /api/session/start`、`POST /api/session/heartbeat`、`POST /api/session/end`、`POST /api/session/bind-task`、`POST /api/session/assign-next-task`
+- 输出：倒计时、结束后导航回 city 并展示 toast 摘要
 - 规则：
   - `app/focus/page.tsx` 实现前必须对照 `UI/focus.html`
   - 进入 `/focus?sessionId=...` 时先查 `GET /api/session/current?sessionId=...`，加载本次待进行或进行中的 session
   - 未带 `sessionId` 进入 `/focus` 时，再查 `GET /api/session/current`，恢复可继续的 `build/work` session
+  - 支持 Free Focus（无任务）与有任务两种模式，task 为可选绑定
   - 用户输入自选时长后才调用 `/api/session/start`
   - `开始/暂停` 共用一个主按钮：开始前触发 `start`，开始后只切本地 pause/resume
   - `重来` 只重置当前本地倒计时，不回滚已写入 heartbeat 贡献
-  - 本地倒计时状态持久化到 `localStorage["nlc:focus-state:<sessionId>"]`
-  - 定时器运行中每 10 分钟发一次 heartbeat
-  - 建造类 session 每 30 秒轮询一次 `/api/tasks`，若实例已完成则立刻 `POST /api/session/end`
+  - 本地倒计时状态持久化到 `localStorage[“nlc:focus-state:<sessionId>”]`
+  - 有任务时每 10 分钟发一次 heartbeat；无任务时纯本地计时
+  - 建造类 session 每 30 秒轮询一次 `/api/tasks`，若实例已完成则触发 unbind + auto-assign
   - 手动停止调用 `POST /api/session/end` 时必须传 `endReason = 'manual_stop'`
   - 倒计时自然结束调用 `POST /api/session/end` 时必须传 `endReason = 'timer_completed'`
-  - 手动停止也必须进入 `/complete`
-  - `/complete` 读取上一页写入的 `sessionStorage["nlc:last-summary"]`；缺失则跳回 `/city`
-  - 若 `autoAssign = true`，完成页自动调用 `POST /api/tasks/assign-next` 并跳回 `/focus?sessionId=...`
-  - 若 `autoAssign = false`，完成页展示“返回城市 / 选择下一个任务”
+  - 结束后写摘要到 `sessionStorage[“nlc:focus-ended-toast”]` 并导航回 `/city`
+  - 城市页消费 toast 摘要后展示右上角通知；若 `autoAssign = true` 且为任务 session，3 秒后自动触发下一轮 focus
 - 依赖：M04、M06
 
 ## M11 — 音频系统

@@ -3,10 +3,9 @@
 
 成员清单
 
-`api/session/`: session 生命周期路由，含创建、恢复、心跳、结算、任务绑定/解绑。  
+`api/session/`: session 生命周期路由，含创建、恢复、心跳、结算、任务绑定/解绑/自动分配。  
 `city/`: M08 城市地图页入口目录。  
-`focus/`: M10 Focus 页面入口目录。  
-`complete/`: M10 完成页入口目录。  
+`focus/`: M10 Focus 页面入口目录，结束后回 city 并通过 toast 展示摘要。  
 `login/`: M07 登录页入口目录，用户名校验与登录跳转。  
 `globals.css`: 全局设计 token、共享表面样式与通用视觉基线。  
 `layout.tsx`: 根布局，负责注入 `globals.css` 与全局字体。  
