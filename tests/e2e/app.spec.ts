@@ -303,7 +303,7 @@ test.describe.serial("real user flows", () => {
     }
   });
 
-  test("focus naturally ends with timer_completed and enters complete page", async ({ page }) => {
+  test("focus naturally ends with timer_completed and returns to city", async ({ page }) => {
     const username = uniqueUsername("timer");
 
     try {
@@ -337,7 +337,7 @@ test.describe.serial("real user flows", () => {
     }
   });
 
-  test("build session completion enters complete with building_completed", async ({ page }) => {
+  test("build session completion returns to city with building_completed", async ({ page }) => {
     const username = uniqueUsername("build-complete");
     let createdInstanceId: string | null = null;
 
