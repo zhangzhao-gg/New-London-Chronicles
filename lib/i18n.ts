@@ -46,6 +46,9 @@ const zhCN: Dict = {
   "header.settings": "设置",
   "header.language": "语言",
 
+  /* ── Focus ── */
+  "focus.language": "语言",
+
   /* ── 导航 ── */
   "nav.map": "地图",
   "nav.build": "建造",
@@ -177,6 +180,9 @@ const enUS: Dict = {
   "header.subtitle": "Generator Status: Nominal",
   "header.settings": "Settings",
   "header.language": "Language",
+
+  /* ── Focus ── */
+  "focus.language": "Language",
 
   /* ── 导航 ── */
   "nav.map": "Map",
