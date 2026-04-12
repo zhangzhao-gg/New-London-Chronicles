@@ -1,6 +1,6 @@
 /**
  * [INPUT]: `POST /api/auth/login`、M06 共享 Button、`UI/start.html` 登录原型
- * [OUTPUT]: M07 登录页，提供用户名即时校验与登录跳转
+ * [OUTPUT]: M07 登录页，提供用户名即时校验，登录成功后跳转 /focus
  * [POS]: 位于 `app/login/page.tsx`，作为登录入口页面
  * [PROTOCOL]: 变更时更新此头部，然后检查 `app/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -103,7 +103,7 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        navigateTo("/city", { replace: true });
+        navigateTo("/focus", { replace: true });
         return;
       }
 

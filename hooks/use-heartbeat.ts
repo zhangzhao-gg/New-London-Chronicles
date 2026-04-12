@@ -1,6 +1,6 @@
 /**
  * [INPUT]: `FocusSession`（task 可空）、`/api/session/*` 写接口、`/api/tasks` 轮询结果
- * [OUTPUT]: Focus 倒计时、条件性 heartbeat（有任务调 API / 无任务纯本地 tick）、`onTaskCompleted` 回调、`hasTask` 状态
+ * [OUTPUT]: Focus 倒计时（归零自动重置，不终止 session）、条件性 heartbeat（有任务调 API / 无任务纯本地 tick）、`onTaskCompleted` 回调、任务轮询感知建造完成、`hasTask` 状态
  * [POS]: 位于 `hooks/use-heartbeat.ts`，被 `components/focus/FocusExperience.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `hooks/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -13,10 +13,9 @@ import { navigateTo } from "@/lib/client-navigation";
 
 export type FocusTaskType = "collect" | "build" | "convert" | "work";
 export type FocusSessionStatus = "pending" | "active";
-export type FocusClientEndReason = "manual_stop" | "timer_completed";
+export type FocusClientEndReason = "manual_stop";
 export type FocusServerEndReason =
   | "manual_stop"
-  | "timer_completed"
   | "resource_exhausted"
   | "building_completed"
   | "timeout";
@@ -99,7 +98,7 @@ type UseHeartbeatResult = {
 const HEARTBEAT_SECONDS = 10 * 60;
 const TASK_POLL_INTERVAL_MS = 30_000;
 const LOCAL_TICK_INTERVAL_MS = 250;
-const DEFAULT_PENDING_FOCUS_MINUTES = 25;
+const DEFAULT_PENDING_FOCUS_MINUTES = 45;
 const SESSION_ENDED_KEY_PREFIX = "nlc:session-ended:";
 
 function getStorageKey(sessionId: string) {
@@ -637,12 +636,14 @@ export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeat
     };
   }, [isPaused, queuedHeartbeatCount, remoteStatus, session]);
 
+  /* ── 计时器归零 → 重置下一轮，session 不终止 ── */
   useEffect(() => {
     if (
       !session ||
       remoteStatus !== "active" ||
       isPaused ||
       remainingSeconds !== 0 ||
+      selectedMinutes == null ||
       queuedHeartbeatCount > 0 ||
       queuedHeartbeatCountRef.current > 0 ||
       isHeartbeatInFlight ||
@@ -651,8 +652,16 @@ export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeat
       return;
     }
 
-    void finishSession("timer_completed");
-  }, [isHeartbeatInFlight, isPaused, queuedHeartbeatCount, remainingSeconds, remoteStatus, session]);
+    const nextSeconds = selectedMinutes * 60;
+
+    cycleHeartbeatCountRef.current = 0;
+    queuedHeartbeatCountRef.current = 0;
+    setCycleHeartbeatCount(0);
+    setQueuedHeartbeatCount(0);
+    setRemainingSeconds(nextSeconds);
+    setCountdownEndsAtMs(deriveCountdownEndsAtMs(nextSeconds));
+    setStatusMessage("本轮专注完成，已自动开始下一轮。");
+  }, [isHeartbeatInFlight, isPaused, queuedHeartbeatCount, remainingSeconds, remoteStatus, selectedMinutes, session]);
 
   useEffect(() => {
     if (
@@ -683,8 +692,12 @@ export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeat
         }
 
         if (!isInstanceStillActive) {
-          setStatusMessage("检测到建造实例已完成，正在结算。");
-          await finishSession("timer_completed");
+          setStatusMessage("检测到建造实例已完成。");
+          onTaskCompleted?.({
+            buildingCompleted: true,
+            buildingName: session.task?.name ?? null,
+            endReason: "building_completed",
+          });
         }
       } catch {
         if (!cancelled && mountedRef.current) {

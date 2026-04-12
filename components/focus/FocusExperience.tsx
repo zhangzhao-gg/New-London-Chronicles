@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 当前登录用户、`/api/session/current`、`use-heartbeat`、`MusicPlayer`、`lib/i18n`、`/api/session/assign-next-task`
- * [OUTPUT]: M10 Focus 主界面，支持有任务/Free Focus 两态，语言切换，任务完成通知与 auto-assign
+ * [INPUT]: 当前登录用户、`/api/session/current`、`/api/session/create`、`use-heartbeat`、`MusicPlayer`、`lib/i18n`、`/api/session/assign-next-task`
+ * [OUTPUT]: M10 Focus 主界面，无 session 时自动创建 free focus，支持有任务/Free Focus 两态，语言切换，任务完成通知与 auto-assign
  * [POS]: 位于 `components/focus/FocusExperience.tsx`，被 `app/focus/page.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md`、`components/CLAUDE.md` 与 `/CLAUDE.md`
  */
@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import MusicPlayer from "@/components/focus/MusicPlayer";
+import WorkPanel from "@/components/focus/WorkPanel";
 import {
   AmbientGlyph,
   BackGlyph,
@@ -101,26 +102,42 @@ function getApiErrorMessage(payload: { error?: { message?: string } } | null, fa
 }
 
 async function fetchCurrentSession(sessionId: string | null) {
-  const url = sessionId ? `/api/session/current?sessionId=${encodeURIComponent(sessionId)}` : "/api/session/current";
+  /* 无指定 sessionId 时传 any=1，确保 taskless free session 也能被恢复 */
+  const url = sessionId
+    ? `/api/session/current?sessionId=${encodeURIComponent(sessionId)}`
+    : "/api/session/current?any=1";
+
   const response = await fetch(url, {
     method: "GET",
     cache: "no-store",
-    headers: {
-      Accept: "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
 
   const payload = await readJson<SessionResponse>(response);
 
-  if (response.status === 404) {
-    return null;
-  }
+  if (response.status === 404) return null;
 
   if (!response.ok || !payload) {
     throw new Error(getApiErrorMessage(payload, "Failed to restore current session."));
   }
 
   return payload.session;
+}
+
+async function createFreeSession(): Promise<FocusSession | null> {
+  const response = await fetch("/api/session/create", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+  });
+
+  if (!response.ok) return null;
+
+  const payload = await readJson<{ sessionId?: string }>(response);
+  if (!payload?.sessionId) return null;
+
+  /* 创建后立即获取完整 session DTO */
+  return fetchCurrentSession(payload.sessionId);
 }
 
 function formatSeconds(value: number | null) {
@@ -292,6 +309,7 @@ export function FocusExperience({
   const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(new Set());
   const [locale, setLocaleState] = useState<Locale>("zh-CN");
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showWorkPanel, setShowWorkPanel] = useState(false);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
@@ -306,22 +324,27 @@ export function FocusExperience({
       setErrorMessage(null);
 
       try {
-        const restoredSession = await fetchCurrentSession(initialSessionId);
+        /* 尝试恢复已有 session（含 taskless free session） */
+        let resolved = await fetchCurrentSession(initialSessionId);
 
-        if (cancelled) {
+        if (cancelled) return;
+
+        /* 无活跃 session → 自动创建 free focus session */
+        if (!resolved) {
+          resolved = await createFreeSession();
+        }
+
+        if (cancelled) return;
+
+        if (!resolved) {
+          setErrorMessage("Failed to create focus session.");
           return;
         }
 
-        if (!restoredSession) {
-          navigateTo("/city", { replace: true });
-          return;
-        }
-
-        setSession(restoredSession);
-      } catch {
+        setSession(resolved);
+      } catch (err) {
         if (!cancelled) {
-          navigateTo("/city", { replace: true });
-          return;
+          setErrorMessage(err instanceof Error ? err.message : "Failed to initialize focus session.");
         }
       } finally {
         if (!cancelled) {
@@ -708,6 +731,18 @@ export function FocusExperience({
               <div className="absolute bottom-3 left-3 h-1.5 w-1.5 bg-[rgba(244,164,98,0.4)]" />
               <div className="absolute bottom-3 right-3 h-1.5 w-1.5 bg-[rgba(244,164,98,0.4)]" />
             </div>
+
+            {/* ── Work 便签面板 ── */}
+            <WorkPanel
+              cycleHeartbeatCount={cycleHeartbeatCount}
+              districtLabel={districtLabel}
+              isOpen={showWorkPanel}
+              objectiveSummary={objectiveSummary}
+              onToggle={() => setShowWorkPanel((v) => !v)}
+              remoteStatus={remoteStatus}
+              session={session}
+              username={initialUser.username}
+            />
 
             <div className="flex flex-1 items-center justify-center">
               <div className="w-full max-w-[25.5rem]">
