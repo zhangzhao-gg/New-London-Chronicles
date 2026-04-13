@@ -453,12 +453,16 @@ begin
   else
     v_resource := 'progress';
     v_amount := v_session.total_minutes;
-    v_narrative := format(
-      '%s完成了%s，为新伦敦贡献了%s分钟施工进度。',
-      v_username,
-      v_template.name,
-      v_amount
-    );
+    v_narrative := case
+      when v_template.type = 'build' then format(
+        '%s完成了%s，为新伦敦贡献了%s分钟施工进度。',
+        v_username, v_template.name, v_amount
+      )
+      else format(
+        '%s完成了%s，为新伦敦贡献了%s分钟工作进度。',
+        v_username, v_template.name, v_amount
+      )
+    end;
   end if;
 
   if v_has_task and v_template.type = 'build' and v_session.task_instance_id is not null then
