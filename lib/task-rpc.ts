@@ -21,7 +21,7 @@ export type AppErrorCode =
 
 type TaskType = "collect" | "build" | "convert" | "work";
 type SessionEndReason = "timer_completed" | "manual_stop" | "resource_exhausted" | "building_completed" | "timeout";
-type ClientSessionEndReason = "timer_completed" | "manual_stop";
+type ClientSessionEndReason = "manual_stop";
 
 type CookieLike = {
   name: string;
@@ -218,8 +218,8 @@ export function optionalUuid(value: unknown, fieldName: string) {
 }
 
 export function requireClientSessionEndReason(value: unknown): ClientSessionEndReason {
-  if (value !== "timer_completed" && value !== "manual_stop") {
-    throw new AppError("VALIDATION_ERROR", "endReason must be 'timer_completed' or 'manual_stop'.");
+  if (value !== "manual_stop") {
+    throw new AppError("VALIDATION_ERROR", "endReason must be 'manual_stop'.");
   }
 
   return value;
