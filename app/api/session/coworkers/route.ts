@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 已登录业务用户、sessions/task_participants/users 表、sessionId 查询参数
+ * [INPUT]: 已登录业务用户、sessions/users 表、sessionId 查询参数
  * [OUTPUT]: `GET /api/session/coworkers`，返回同任务协作者用户名列表
  * [POS]: 位于 app/api/session/coworkers，被 FocusExperience 轮询消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 app/api/session/CLAUDE.md
@@ -11,13 +11,14 @@ import { appendSupabaseSessionCookieIfRefreshed, errorResponse, resolveSessionFr
 import { handleRouteError, selectRows, type SessionRow } from "@/lib/supabase-server";
 
 /* ================================================================
- *  PostgREST 嵌套查询返回类型
+ *  心跳活跃阈值：与 city/tasks 保持一致，覆盖 2 个心跳周期容错
  * ================================================================ */
 
-type ParticipantWithUser = {
-  user_id: string;
-  users: { username: string };
-};
+const FRESHNESS_MS = 20 * 60 * 1000;
+
+/* ================================================================
+ *  PostgREST 嵌套查询返回类型
+ * ================================================================ */
 
 type SessionWithUser = {
   user_id: string;
@@ -66,36 +67,32 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    let usernames: string[];
+    /* ── 统一查 sessions：按心跳新鲜度过滤僵尸，与 city/tasks 阈值一致 ── */
+    const aliveSince = new Date(Date.now() - FRESHNESS_MS).toISOString();
+    const filter: Record<string, string> = {
+      status: "in.(pending,active)",
+      user_id: `neq.${userId}`,
+      last_heartbeat_at: `gte.${aliveSince}`,
+    };
 
     if (session.task_instance_id) {
-      /* ── build/work: 查 task_participants ── */
-      const rows = await selectRows<ParticipantWithUser>(
-        "task_participants",
-        "user_id,users(username)",
-        { instance_id: `eq.${session.task_instance_id}`, user_id: `neq.${userId}` },
-      );
-      usernames = rows.map((r) => r.users.username);
+      /* build/work: 同 instance 的活跃 session */
+      filter.task_instance_id = `eq.${session.task_instance_id}`;
     } else {
-      /* ── collect/convert: 查同 template 的 active sessions ── */
-      const rows = await selectRows<SessionWithUser>(
-        "sessions",
-        "user_id,users(username)",
-        {
-          task_template_id: `eq.${session.task_template_id}`,
-          status: "in.(pending,active)",
-          user_id: `neq.${userId}`,
-        },
-      );
+      /* collect/convert: 同 template 的活跃 session */
+      filter.task_template_id = `eq.${session.task_template_id}`;
+    }
 
-      /* 去重：同一用户可能有多个 session（理论上不会，但防御性处理） */
-      const seen = new Set<string>();
-      usernames = [];
-      for (const r of rows) {
-        if (!seen.has(r.users.username)) {
-          seen.add(r.users.username);
-          usernames.push(r.users.username);
-        }
+    const rows = await selectRows<SessionWithUser>("sessions", "user_id,users(username)", filter);
+
+    /* 去重：唯一约束保证每用户最多一个 live session，但防御性处理 */
+    const seen = new Set<string>();
+    const usernames: string[] = [];
+    for (const r of rows) {
+      const username = r.users?.username;
+      if (username && !seen.has(username)) {
+        seen.add(username);
+        usernames.push(username);
       }
     }
 

@@ -3,6 +3,7 @@
 
 成员清单
 
+`api/internal/`: 内部 cron 路由（城市 upkeep、僵尸 session 清扫），需 `x-cron-secret` 鉴权。  
 `api/session/`: session 生命周期路由，含创建、恢复、心跳、结算、任务绑定/解绑/自动分配。  
 `city/`: M08 城市地图页入口目录。  
 `focus/`: M10 Focus 页面入口目录，结束后回 city 并通过 toast 展示摘要。  
