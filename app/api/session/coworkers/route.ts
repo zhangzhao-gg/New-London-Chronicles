@@ -89,9 +89,10 @@ export async function GET(request: NextRequest) {
     const seen = new Set<string>();
     const usernames: string[] = [];
     for (const r of rows) {
-      if (!seen.has(r.users.username)) {
-        seen.add(r.users.username);
-        usernames.push(r.users.username);
+      const username = r.users?.username;
+      if (username && !seen.has(username)) {
+        seen.add(username);
+        usernames.push(username);
       }
     }
 
