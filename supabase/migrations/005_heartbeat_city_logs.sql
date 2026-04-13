@@ -325,7 +325,7 @@ begin
     select
       v_session.id,
       v_template.type,
-      public.rpc_contribution_json(10, 0, 0, 0, 0, 0),
+      public.rpc_contribution_json(v_output, 0, 0, 0, 0, 0),
       true,
       v_template.type = 'build',
       v_building_name,
@@ -338,7 +338,7 @@ begin
   select
     v_session.id,
     v_template.type,
-    public.rpc_contribution_json(10, 0, 0, 0, 0, 0),
+    public.rpc_contribution_json(v_output, 0, 0, 0, 0, 0),
     false,
     false,
     null::text,

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: FocusSession 状态、用户名、区域/任务标签
- * [OUTPUT]: 右侧滑出工作信息面板 + 便签 tab 触发器
+ * [OUTPUT]: 右侧滑出工作信息面板 + 便签 tab 触发器 + 协作者列表
  * [POS]: 位于 `components/focus/WorkPanel.tsx`，被 `FocusExperience.tsx` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md`
  */
@@ -15,7 +15,10 @@ import type { FocusSession, FocusSessionStatus } from "@/hooks/use-heartbeat";
  *  Types
  * ================================================================ */
 
+type CoworkerDto = { username: string };
+
 type WorkPanelProps = {
+  coworkers: CoworkerDto[];
   cycleHeartbeatCount: number;
   districtLabel: string;
   isOpen: boolean;
@@ -67,7 +70,10 @@ function InfoRow({ label, value, accent = false }: { accent?: boolean; label: st
  *  WorkPanel
  * ================================================================ */
 
+const MAX_VISIBLE_CREW = 5;
+
 export default function WorkPanel({
+  coworkers,
   cycleHeartbeatCount,
   districtLabel,
   isOpen,
@@ -161,6 +167,32 @@ export default function WorkPanel({
             <InfoRow label="Deployed" value={formatTime(session?.startedAt ?? null)} />
             <InfoRow label="Last Signal" value={formatTime(session?.lastHeartbeatAt ?? null)} />
           </div>
+
+          {/* ── 协作者列表 ── */}
+          {session?.task ? (
+            <div className="border-t border-[rgba(244,164,98,0.1)] px-4 py-3">
+              <h4 className="m-0 mb-2 text-[0.56rem] font-bold uppercase tracking-[0.24em] text-[rgba(244,164,98,0.46)]">
+                Crew on Station
+              </h4>
+              {coworkers.length === 0 ? (
+                <p className="m-0 text-[0.6rem] italic text-[rgba(247,221,197,0.3)]">No crew detected</p>
+              ) : (
+                <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                  {coworkers.slice(0, MAX_VISIBLE_CREW).map((c) => (
+                    <li key={c.username} className="flex items-center gap-2">
+                      <span className="size-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+                      <span className="truncate text-[0.68rem] text-[rgba(247,221,197,0.82)]">{c.username}</span>
+                    </li>
+                  ))}
+                  {coworkers.length > MAX_VISIBLE_CREW ? (
+                    <li className="text-[0.56rem] text-[rgba(247,221,197,0.36)]">
+                      +{coworkers.length - MAX_VISIBLE_CREW} more
+                    </li>
+                  ) : null}
+                </ul>
+              )}
+            </div>
+          ) : null}
 
           {/* 面板底部装饰 */}
           <div className="mt-3 border-t border-[rgba(244,164,98,0.1)] px-4 py-3">

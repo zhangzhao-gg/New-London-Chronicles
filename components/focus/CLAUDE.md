@@ -4,7 +4,7 @@
 成员清单
 
 `FocusExperience.tsx`: M10 Focus 主界面，支持有任务/Free Focus 两态，任务完成通知与 auto-assign，结束时写 toast 摘要并导航回 city。  
-`WorkPanel.tsx`: 右侧滑出工作信息面板 + 便签 tab 触发器，展示区域/任务/session 状态。  
+`WorkPanel.tsx`: 右侧滑出工作信息面板 + 便签 tab 触发器，展示区域/任务/session 状态与协作者列表。  
 `MusicPlayer.tsx`: M11 音频系统组件，承载 lo-fi 播放器 UI 与播放列表选择面板。  
 `FocusGlyphs.tsx`: Focus 模块共享 SVG 图标集合（Header / Timer / Todo / 语言切换）。
 `CLAUDE.md`: focus 组件目录职责与边界说明。  

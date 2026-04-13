@@ -310,6 +310,7 @@ export function FocusExperience({
   const [locale, setLocaleState] = useState<Locale>("zh-CN");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showWorkPanel, setShowWorkPanel] = useState(false);
+  const [coworkers, setCoworkers] = useState<{ username: string }[]>([]);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
@@ -476,6 +477,32 @@ export function FocusExperience({
     setSelectedMinutesInput(String(selectedMinutes));
   }, [selectedMinutes]);
 
+  /* ── 协作者轮询（30s） ── */
+  useEffect(() => {
+    const sid = session?.id;
+    const hasTask = !!session?.task;
+
+    if (!sid || !hasTask) {
+      setCoworkers([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch(`/api/session/coworkers?sessionId=${sid}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled) setCoworkers(data.coworkers ?? []);
+      } catch { /* 静默 — 下次轮询重试 */ }
+    }
+
+    poll();
+    const timer = setInterval(poll, 30_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [session?.id, session?.task]);
+
   const updateTodos = useCallback((next: TodoItem[]) => {
     setTodos(next);
     saveTodos(storageKey, next);
@@ -620,18 +647,19 @@ export function FocusExperience({
             </div>
           </div>
 
-          <div className="grid border-t border-[rgba(244,164,98,0.12)] text-[0.6rem] uppercase tracking-[0.16em] text-[var(--nlc-muted)] lg:grid-cols-[1fr_1.15fr_0.85fr]">
-            <div className="flex items-center gap-2 border-b border-[rgba(244,164,98,0.08)] px-4 py-2 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
-              <span className="text-[rgba(244,164,98,0.46)]">Region</span>
-              <span className="text-[var(--nlc-orange)]">{districtLabel}</span>
+          <div className="grid border-t border-[rgba(244,164,98,0.12)] lg:grid-cols-[1fr_1.15fr_0.85fr]">
+            <div className="flex items-center gap-2 border-b border-[rgba(244,164,98,0.08)] px-4 py-2.5 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
+              <span className="text-[0.5rem] uppercase tracking-[0.2em] text-[rgba(244,164,98,0.46)]">Region</span>
+              <span className="text-[0.82rem] font-semibold text-[var(--nlc-orange)]">{districtLabel}</span>
             </div>
-            <div className="flex items-center gap-2 border-b border-[rgba(244,164,98,0.08)] px-4 py-2 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
-              <span className="text-[rgba(244,164,98,0.46)]">Current Objective</span>
-              <span className="truncate text-[var(--nlc-orange)]">{objectiveSummary}</span>
+            <div className="flex items-center gap-2 border-b border-[rgba(244,164,98,0.08)] px-4 py-2.5 lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.12)]">
+              <span className="text-[0.5rem] uppercase tracking-[0.2em] text-[rgba(244,164,98,0.46)]">Current Objective</span>
+              <span className="truncate text-[0.82rem] font-semibold text-[var(--nlc-orange)]">{objectiveSummary}</span>
             </div>
-            <div className="flex items-center justify-between gap-2 px-4 py-2">
-              <span className="text-[rgba(244,164,98,0.46)]">Captain {initialUser.username}</span>
-              <span className="text-[var(--nlc-orange)]">{systemStatus}</span>
+            <div className="flex items-center justify-between gap-2 px-4 py-2.5">
+              <span className="text-[0.5rem] uppercase tracking-[0.2em] text-[rgba(244,164,98,0.46)]">Captain</span>
+              <span className="text-[0.82rem] font-semibold text-[rgba(247,221,197,0.88)]">{initialUser.username}</span>
+              <span className="ml-auto text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-[var(--nlc-orange)]">{systemStatus}</span>
             </div>
           </div>
         </header>
@@ -741,6 +769,7 @@ export function FocusExperience({
 
             {/* ── Work 便签面板 ── */}
             <WorkPanel
+              coworkers={coworkers}
               cycleHeartbeatCount={cycleHeartbeatCount}
               districtLabel={districtLabel}
               isOpen={showWorkPanel}
