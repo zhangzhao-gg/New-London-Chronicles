@@ -1,7 +1,7 @@
 /**
- * [INPUT]: `process.env`、`city_resources`、`task_templates`、`task_instances`、`buildings`、`users` 的 Supabase REST 数据
- * [OUTPUT]: 提供 cron 鉴权、Asia/Shanghai 日历、建造指令执行与每日 upkeep 能力
- * [POS]: 位于 `lib/cron.ts`，被 `app/api/tasks/strategy/route.ts` 与 `app/api/internal/city/upkeep/route.ts` 消费
+ * [INPUT]: `process.env`、`city_resources`、`task_templates`、`task_instances`、`buildings`、`users`、`sessions` 的 Supabase REST 数据
+ * [OUTPUT]: 提供 cron 鉴权、Asia/Shanghai 日历、建造指令执行、每日 upkeep 与僵尸 session 清扫能力
+ * [POS]: 位于 `lib/cron.ts`，被 `app/api/tasks/strategy/route.ts`、`app/api/internal/city/upkeep/route.ts`、`app/api/internal/sessions/reap/route.ts` 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `CLAUDE.md` 与相关 docs
  */
 
@@ -50,6 +50,10 @@ type UserRow = {
   created_at: string;
 };
 
+export type ReapZombieSessionsSummary = {
+  reaped: number;
+};
+
 export type DailyCityUpkeepSummary = {
   businessDate: string;
   activeUsers: number;
@@ -83,6 +87,7 @@ type CreateInstanceResult =
 const SHANGHAI_TIME_ZONE = "Asia/Shanghai";
 const CITY_RESOURCE_ROW_ID = 1;
 const CAS_RETRY_LIMIT = 3;
+const ZOMBIE_SESSION_THRESHOLD_HOURS = 12;
 
 const DISTRICT_SLOT_COUNTS: Record<District, number> = {
   resource: 8,
@@ -320,6 +325,38 @@ export async function executeBuildOrder(input: BuildOrderInput): Promise<BuildOr
     templateCode: input.templateCode,
     slotId: result.slotId,
   };
+}
+
+/* ================================================================
+ *  僵尸 session 清扫
+ *  超过 ZOMBIE_SESSION_THRESHOLD_HOURS 未心跳的 pending/active session
+ *  强制转为 ended + end_reason='timeout'
+ * ================================================================ */
+
+export async function reapZombieSessions(): Promise<ReapZombieSessionsSummary> {
+  const api = new SupabaseAdminApi();
+  const cutoff = new Date(Date.now() - ZOMBIE_SESSION_THRESHOLD_HOURS * 60 * 60 * 1000).toISOString();
+  const now = new Date().toISOString();
+
+  /* 条件 PATCH 一步到位：匹配即更新，无需先查后改 */
+  const orFilter = [
+    `last_heartbeat_at.lt.${cutoff}`,
+    `and(last_heartbeat_at.is.null,started_at.lt.${cutoff})`,
+    `and(last_heartbeat_at.is.null,started_at.is.null,created_at.lt.${cutoff})`,
+  ].join(",");
+
+  const params = new URLSearchParams();
+  params.set("status", "in.(pending,active)");
+  params.set("or", `(${orFilter})`);
+
+  const rows = await api.patch<Array<{ id: string }>>(
+    "/sessions",
+    { status: "ended", end_reason: "timeout", ended_at: now },
+    params,
+    { Prefer: "return=representation" },
+  );
+
+  return { reaped: rows.length };
 }
 
 async function runDailyCityUpkeepFallback(api: SupabaseAdminApi): Promise<DailyCityUpkeepSummary> {

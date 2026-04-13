@@ -387,6 +387,7 @@ export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeat
         remainingMs == null
           ? persistedState.remainingSeconds
           : getRemainingSecondsFromMs(remainingMs);
+
       const completedHeartbeatCount =
         remainingMs == null
           ? deriveCycleHeartbeatCount(persistedState.selectedMinutes, nextRemainingSeconds)
