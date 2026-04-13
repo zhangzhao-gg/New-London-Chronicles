@@ -478,11 +478,11 @@ export function FocusExperience({
   }, [selectedMinutes]);
 
   /* ── 协作者轮询（30s） ── */
+  const taskTemplateId = session?.task?.templateId;
   useEffect(() => {
     const sid = session?.id;
-    const hasTask = !!session?.task;
 
-    if (!sid || !hasTask) {
+    if (!sid || !taskTemplateId) {
       setCoworkers([]);
       return;
     }
@@ -501,7 +501,7 @@ export function FocusExperience({
     poll();
     const timer = setInterval(poll, 30_000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [session?.id, session?.task]);
+  }, [session?.id, taskTemplateId]);
 
   const updateTodos = useCallback((next: TodoItem[]) => {
     setTodos(next);
