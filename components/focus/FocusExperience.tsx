@@ -329,7 +329,14 @@ export function FocusExperience({
 
         if (cancelled) return;
 
-        /* 无活跃 session → 自动创建 free focus session */
+        /* 指定 sessionId 未命中 → fallback 到任意 live session */
+        if (!resolved && initialSessionId) {
+          resolved = await fetchCurrentSession(null);
+        }
+
+        if (cancelled) return;
+
+        /* 仍无活跃 session → 自动创建 free focus session */
         if (!resolved) {
           resolved = await createFreeSession();
         }

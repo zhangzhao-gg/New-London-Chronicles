@@ -94,7 +94,7 @@ begin
       v_template.type,
       public.rpc_contribution_json(0, 0, 0, 0, 0, 0),
       true,
-      v_session.task_unbind_reason = 'task_completed',
+      v_template.type = 'build' and v_session.task_unbind_reason = 'task_completed',
       null::text,
       0,
       v_session.task_unbind_reason;
@@ -267,9 +267,9 @@ begin
     return;
   end if;
 
-  -- 正常推进
-  v_output := v_template.output_per_heartbeat;
-  v_new_remaining := greatest(v_instance.remaining_minutes - v_output, 0);
+  -- 正常推进（clamp 防止超射）
+  v_output := least(v_template.output_per_heartbeat, v_instance.remaining_minutes);
+  v_new_remaining := v_instance.remaining_minutes - v_output;
 
   update public.task_instances
   set progress_minutes = progress_minutes + v_output,
@@ -288,8 +288,10 @@ begin
   values (
     v_username,
     case
-      when v_new_remaining = 0 then format('完成了%s的建设！', v_template.name)
-      else format('推进了%s的建设（剩余%s分钟）。', v_template.name, v_new_remaining)
+      when v_new_remaining = 0 and v_template.type = 'build' then format('完成了%s的建设！', v_template.name)
+      when v_new_remaining = 0 then format('完成了%s！', v_template.name)
+      when v_template.type = 'build' then format('推进了%s的建设（剩余%s分钟）。', v_template.name, v_new_remaining)
+      else format('推进了%s（剩余%s分钟）。', v_template.name, v_new_remaining)
     end
   );
 

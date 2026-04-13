@@ -99,6 +99,8 @@ export default function WorkPanel({
     <div ref={panelRef} className="pointer-events-auto absolute right-0 top-1/2 z-20 -translate-y-1/2">
       {/* ── 便签 Tab ── */}
       <button
+        aria-controls="work-panel-drawer"
+        aria-expanded={isOpen}
         aria-label={isOpen ? "收起工作面板" : "展开工作面板"}
         className="absolute right-full top-1/2 z-10 -translate-y-1/2 cursor-pointer"
         onClick={onToggle}
@@ -129,6 +131,8 @@ export default function WorkPanel({
 
       {/* ── 滑出面板 ── */}
       <div
+        aria-hidden={!isOpen}
+        id="work-panel-drawer"
         className={[
           "overflow-hidden transition-all duration-300 ease-out",
           isOpen ? "w-[17rem] opacity-100" : "w-0 opacity-0",

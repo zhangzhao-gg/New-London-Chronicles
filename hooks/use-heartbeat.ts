@@ -426,7 +426,7 @@ export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeat
     if (nextRemoteStatus === "pending") {
       setSelectedMinutesState(DEFAULT_PENDING_FOCUS_MINUTES);
       setRemainingSeconds(DEFAULT_PENDING_FOCUS_MINUTES * 60);
-      setStatusMessage("已载入默认 25 分钟时长，可直接开始。");
+      setStatusMessage("已载入默认 45 分钟时长，可直接开始。");
       return;
     }
 
@@ -692,11 +692,12 @@ export function useHeartbeat({ session, onEnded, onTaskCompleted }: UseHeartbeat
         }
 
         if (!isInstanceStillActive) {
-          setStatusMessage("检测到建造实例已完成。");
+          const isBuild = session.task?.type === "build";
+          setStatusMessage(isBuild ? "检测到建造已完成。" : "检测到任务已完成。");
           onTaskCompleted?.({
-            buildingCompleted: true,
-            buildingName: session.task?.name ?? null,
-            endReason: "building_completed",
+            buildingCompleted: isBuild,
+            buildingName: isBuild ? (session.task?.name ?? null) : null,
+            endReason: isBuild ? "building_completed" : "resource_exhausted",
           });
         }
       } catch {
