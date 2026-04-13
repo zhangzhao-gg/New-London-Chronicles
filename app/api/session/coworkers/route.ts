@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 已登录业务用户、sessions/users 表、sessionId 查询参数
- * [OUTPUT]: `GET /api/session/coworkers`，返回同任务协作者用户名列表
+ * [OUTPUT]: `GET /api/session/coworkers`，返回同任务协作者（username + startedAt）
  * [POS]: 位于 app/api/session/coworkers，被 FocusExperience 轮询消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 app/api/session/CLAUDE.md
  */
@@ -22,6 +22,7 @@ const FRESHNESS_MS = 20 * 60 * 1000;
 
 type SessionWithUser = {
   user_id: string;
+  started_at: string | null;
   users: { username: string };
 };
 
@@ -83,20 +84,18 @@ export async function GET(request: NextRequest) {
       filter.task_template_id = `eq.${session.task_template_id}`;
     }
 
-    const rows = await selectRows<SessionWithUser>("sessions", "user_id,users(username)", filter);
+    const rows = await selectRows<SessionWithUser>("sessions", "user_id,started_at,users(username)", filter);
 
     /* 去重：唯一约束保证每用户最多一个 live session，但防御性处理 */
     const seen = new Set<string>();
-    const usernames: string[] = [];
+    const coworkers: { username: string; startedAt: string | null }[] = [];
     for (const r of rows) {
       const username = r.users?.username;
       if (username && !seen.has(username)) {
         seen.add(username);
-        usernames.push(username);
+        coworkers.push({ username, startedAt: r.started_at ?? null });
       }
     }
-
-    const coworkers = usernames.map((username) => ({ username }));
 
     const response = NextResponse.json({ coworkers });
     appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);

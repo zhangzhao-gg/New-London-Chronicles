@@ -8,6 +8,7 @@
 `003_task_rpc.sql`: 5 个核心 RPC（join_task、assign_next_task、start/heartbeat/end_session）与辅助函数。  
 `004_decouple_session_task.sql`: 解耦专注与任务 — schema 变更 + 4 个新 RPC + 3 个 RPC 重写。  
 `005_heartbeat_city_logs.sql`: 重写 rpc_session_heartbeat（心跳写日志）+ rpc_end_session（手动停止去日志、移除 timer_completed 验证）。  
+`006_building_bound_tasks.sql`: 建筑绑定任务系统 — schema ALTER（spawns_template_id、building_id、instance_id 可空）、5 个预置建筑种子、`rpc_find_best_task` 辅助函数、6 个 RPC 重写（统一 instance 必传 + buildingName 返回）、遗留 session 清理。  
 `CLAUDE.md`: migrations 目录地图，维护迁移编号与职责说明。  
 
 法则

@@ -312,6 +312,23 @@ button {
   animation: nlc-progress-pulse 1.5s ease-in-out infinite;
 }
 
+/* ─── 协作者脉冲点 ─── */
+
+@keyframes nlc-dot-blink {
+  0%, 80%, 100% { opacity: 0.15; }
+  40% { opacity: 1; }
+}
+
+/* ─── 隐藏滚动条但保留滚轮 ─── */
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── 无障碍：减弱动画偏好 ─── */
 
 @media (prefers-reduced-motion: reduce) {
