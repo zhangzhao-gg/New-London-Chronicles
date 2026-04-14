@@ -328,14 +328,7 @@ export function FocusExperience({
   const [locale, setLocaleState] = useState<Locale>("zh-CN");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showWorkPanel, setShowWorkPanel] = useState(false);
-  const [coworkers, setCoworkers] = useState<{ username: string; startedAt: string | null }[]>([
-    { username: "Edmund_W", startedAt: new Date(Date.now() - 142 * 60_000).toISOString() },
-    { username: "Clara_M", startedAt: new Date(Date.now() - 53 * 60_000).toISOString() },
-    { username: "Nikolai_V", startedAt: new Date(Date.now() - 8 * 60_000).toISOString() },
-    { username: "Isolde_K", startedAt: new Date(Date.now() - 95 * 60_000).toISOString() },
-    { username: "Fenwick_J", startedAt: new Date(Date.now() - 25 * 60_000).toISOString() },
-    { username: "Margaux_L", startedAt: new Date(Date.now() - 3 * 60_000).toISOString() },
-  ]);
+  const [coworkers, setCoworkers] = useState<{ username: string; startedAt: string | null }[]>([]);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const addTodoFormRef = useRef<HTMLFormElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
@@ -524,7 +517,8 @@ export function FocusExperience({
     const sid = session?.id;
 
     if (!sid || !taskTemplateId) {
-      return; /* 保留初始假数据用于调试 */
+      setCoworkers([]);
+      return;
     }
 
     let cancelled = false;
@@ -534,8 +528,7 @@ export function FocusExperience({
         const res = await fetch(`/api/session/coworkers?sessionId=${sid}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        const real = data.coworkers ?? [];
-        if (!cancelled && real.length > 0) setCoworkers(real);
+        if (!cancelled) setCoworkers(data.coworkers ?? []);
       } catch { /* 静默 — 下次轮询重试 */ }
     }
 
