@@ -11,12 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 
 import { PlaylistGlyph, THEME_ICON_SVG } from "@/components/focus/FocusGlyphs";
 import { getAudioManager, PLAYLISTS } from "@/lib/audio";
-
-/* ─── 工具 ─── */
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
+import { joinClasses } from "@/lib/utils";
 
 /* ─── SVG 图标 ─── */
 

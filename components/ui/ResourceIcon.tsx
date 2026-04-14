@@ -7,6 +7,8 @@
 
 import type { HTMLAttributes, ReactNode } from "react";
 
+import { joinClasses } from "@/lib/utils";
+
 export type ResourceKind = "coal" | "wood" | "steel" | "rawFood" | "foodSupply" | "steamCore" | "temperature";
 export type ResourceIconSize = "sm" | "md" | "lg";
 
@@ -33,10 +35,6 @@ const resourceLabels: Record<ResourceKind, string> = {
   steamCore: "蒸汽核心",
   temperature: "温度",
 };
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 function renderIcon(resource: ResourceKind): ReactNode {
   const iconClassName = "size-[65%] text-current";

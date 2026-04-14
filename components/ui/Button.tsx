@@ -7,6 +7,8 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
+import { joinClasses } from "@/lib/utils";
+
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "tab";
 export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
@@ -31,10 +33,6 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: "nlc-button-base nlc-button-ghost",
   tab: "nlc-button-base nlc-button-tab",
 };
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {

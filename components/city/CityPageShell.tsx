@@ -35,6 +35,7 @@ import {
 } from "@/hooks/use-city";
 import type { UserDto } from "@/lib/auth";
 import { t, getSavedLocale, saveLocale, LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n";
+import { joinClasses } from "@/lib/utils";
 
 const DISTRICT_CLIP_PATH = "polygon(5% 0%, 95% 0%, 100% 20%, 100% 80%, 95% 100%, 5% 100%, 0% 80%, 0% 20%)";
 const MAP_BACKGROUND_URL = "/images/city-map-bg.jpg";
@@ -128,10 +129,6 @@ const navItems = [
   { labelKey: "nav.personnel", icon: NavIconPersonnel, active: false },
   { labelKey: "nav.alerts", icon: NavIconAlerts, active: false },
 ] as const;
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);

@@ -11,6 +11,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboard
 import { createPortal } from "react-dom";
 
 import { Button } from "./Button";
+import { joinClasses } from "@/lib/utils";
 
 export type ModalSize = "sm" | "md" | "lg" | "xl";
 
@@ -42,10 +43,6 @@ const focusableSelector = [
   'select:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 function getFocusableElements(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLElement>(focusableSelector)).filter(

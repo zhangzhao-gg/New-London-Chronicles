@@ -10,6 +10,7 @@
 `supabase-server.ts`: 服务端 Supabase client 工厂（service role）。  
 `task-rpc.ts`: 任务系统 RPC 封装（join、assign、start、heartbeat、end）。  
 `audio.ts`: 音频播放工具。  
+`utils.ts`: 全局共享纯工具函数（joinClasses 等），无外部依赖。  
 `cron.ts`: cron 鉴权、Asia/Shanghai 日历、建造指令执行、每日 upkeep 与僵尸 session 清扫。  
 `CLAUDE.md`: lib 目录地图与职责边界。  
 

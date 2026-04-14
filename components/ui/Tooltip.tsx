@@ -9,6 +9,8 @@
 
 import { useId, useState, type ReactNode } from "react";
 
+import { joinClasses } from "@/lib/utils";
+
 export type TooltipSide = "top" | "right" | "bottom" | "left";
 
 export type TooltipProps = {
@@ -35,10 +37,6 @@ const arrowClasses: Record<TooltipSide, string> = {
     "bottom-full left-1/2 -translate-x-1/2 border-x-transparent border-t-transparent border-b-[rgba(32,22,15,0.96)]",
   left: "left-full top-1/2 -translate-y-1/2 border-y-transparent border-r-transparent border-l-[rgba(32,22,15,0.96)]",
 };
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 export function Tooltip({
   children,

@@ -64,6 +64,7 @@ type ResolvedRequestSession = {
 };
 
 type ErrorCode =
+  | "BAD_REQUEST"
   | "UNAUTHORIZED"
   | "VALIDATION_ERROR"
   | "NOT_FOUND"
