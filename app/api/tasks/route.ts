@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 已登录业务用户、task_templates、task_instances、sessions、city_resources
- * [OUTPUT]: `GET /api/tasks`，返回区块任务列表与加入态
+ * [INPUT]: 已登录业务用户、task_templates、task_instances、sessions、city_resources、buildings
+ * [OUTPUT]: `GET /api/tasks`，返回区块任务列表与加入态，所有任务绑定建筑实例（含 location 风味文本）
  * [POS]: 位于 app/api/tasks，被区块详情弹窗消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 app/CLAUDE.md 与 /CLAUDE.md
  */
@@ -12,11 +12,18 @@ import {
   handleRouteError,
   selectRows,
   toTaskJsonRecord,
+  type BuildingRow,
   type CityResourcesRow,
   type SessionRow,
   type TaskInstanceRow,
   type TaskTemplateRow,
 } from "@/lib/supabase-server";
+
+/* ------------------------------------------------------------------ */
+/*  类型                                                               */
+/* ------------------------------------------------------------------ */
+
+type DisabledReason = "insufficient_resource" | "no_patients" | null;
 
 type TaskListItem = {
   template: ReturnType<typeof mapTemplateDto>;
@@ -26,11 +33,16 @@ type TaskListItem = {
     progressMinutes: number;
     remainingMinutes: number;
   } | null;
+  building: { id: string; name: string; slotId: string; location: string | null } | null;
   participants: number;
   canJoin: boolean;
-  disabledReason: "insufficient_resource" | "no_patients" | null;
+  disabledReason: DisabledReason;
   actionLabel: string;
 };
+
+/* ------------------------------------------------------------------ */
+/*  工具函数                                                           */
+/* ------------------------------------------------------------------ */
 
 function hasEnoughResources(resources: CityResourcesRow, costs: Record<string, number>): boolean {
   return Object.entries(costs).every(([resourceKey, amount]) => {
@@ -43,6 +55,36 @@ function hasEnoughResources(resources: CityResourcesRow, costs: Record<string, n
 
 function getActionLabel(type: TaskTemplateRow["type"]): string {
   return type === "collect" || type === "convert" ? "前往工作" : "加入建造";
+}
+
+function resolveJoinability(
+  template: TaskTemplateRow,
+  resources: CityResourcesRow,
+): [boolean, DisabledReason] {
+  if (template.code === "medical-shift") {
+    return [false, "no_patients"];
+  }
+
+  if (template.type === "collect" || template.type === "convert") {
+    const cost = toTaskJsonRecord(template.heartbeat_cost);
+    const enough = hasEnoughResources(resources, cost);
+
+    return [enough, enough ? null : "insufficient_resource"];
+  }
+
+  return [true, null];
+}
+
+function resolveBuildingDto(
+  instance: TaskInstanceRow,
+  buildingById: Map<string, BuildingRow>,
+): { id: string; name: string; slotId: string; location: string | null } | null {
+  if (!instance.building_id) return null;
+
+  const building = buildingById.get(instance.building_id);
+  if (!building) return null;
+
+  return { id: building.id, name: building.name, slotId: building.slot_id, location: building.location };
 }
 
 function mapTemplateDto(template: TaskTemplateRow) {
@@ -60,6 +102,10 @@ function mapTemplateDto(template: TaskTemplateRow) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  GET /api/tasks                                                     */
+/* ------------------------------------------------------------------ */
+
 export async function GET(request: Request) {
   let resolvedSession: Awaited<ReturnType<typeof resolveSessionFromRequest>> | null = null;
 
@@ -70,7 +116,7 @@ export async function GET(request: Request) {
       return errorResponse(401, "UNAUTHORIZED", "Login required.");
     }
 
-    const [resourcesRows, templates, activeInstances, liveSessions] = await Promise.all([
+    const [resourcesRows, templates, activeInstances, liveSessions, buildings] = await Promise.all([
       selectRows<CityResourcesRow>(
         "city_resources",
         "id,coal,wood,steel,raw_food,food_supply,updated_at",
@@ -78,7 +124,7 @@ export async function GET(request: Request) {
       ),
       selectRows<TaskTemplateRow>(
         "task_templates",
-        "id,code,name,type,district,output_resource,output_per_heartbeat,build_cost,heartbeat_cost,duration_minutes,enabled,sort_order",
+        "id,code,name,type,district,output_resource,output_per_heartbeat,build_cost,heartbeat_cost,duration_minutes,spawns_template_id,enabled,sort_order",
         {
           enabled: "eq.true",
           order: "sort_order.asc",
@@ -86,7 +132,7 @@ export async function GET(request: Request) {
       ),
       selectRows<TaskInstanceRow>(
         "task_instances",
-        "id,template_id,status,progress_minutes,remaining_minutes,slot_id,created_at,completed_at",
+        "id,template_id,status,progress_minutes,remaining_minutes,slot_id,building_id,created_at,completed_at",
         {
           status: "eq.active",
           order: "created_at.asc",
@@ -99,6 +145,10 @@ export async function GET(request: Request) {
           status: "in.(pending,active)",
         },
       ),
+      selectRows<BuildingRow>(
+        "buildings",
+        "id,name,district,slot_id,location,completed_at",
+      ),
     ]);
 
     const resources = resourcesRows[0];
@@ -106,6 +156,8 @@ export async function GET(request: Request) {
     if (!resources) {
       throw new Error("City resources row is missing.");
     }
+
+    const buildingById = new Map(buildings.map((b) => [b.id, b]));
 
     /* 只计入 active 且心跳新鲜（20 分钟内）的 session，排除僵尸 */
     const FRESHNESS_MS = 20 * 60 * 1000;
@@ -115,14 +167,6 @@ export async function GET(request: Request) {
       const basis = session.last_heartbeat_at ?? session.started_at ?? session.created_at;
       return basis ? new Date(basis).getTime() >= freshnessThreshold : false;
     });
-
-    const liveTemplateParticipants = freshSessions.reduce<Map<string, number>>((accumulator, session) => {
-      if (!session.task_instance_id && session.task_template_id) {
-        accumulator.set(session.task_template_id, (accumulator.get(session.task_template_id) ?? 0) + 1);
-      }
-
-      return accumulator;
-    }, new Map());
 
     const liveInstanceParticipants = freshSessions.reduce<Map<string, number>>((accumulator, session) => {
       if (session.task_instance_id) {
@@ -139,49 +183,24 @@ export async function GET(request: Request) {
       return accumulator;
     }, new Map());
 
+    /* ── 统一逻辑：所有任务类型都走 instance 卡片 ── */
     const tasks = templates.flatMap<TaskListItem>((template) => {
-      const templateDto = mapTemplateDto(template);
-      const actionLabel = getActionLabel(template.type);
-
-      if (template.code === "medical-shift") {
-        return [{
-          template: templateDto,
-          instance: null,
-          participants: liveTemplateParticipants.get(template.id) ?? 0,
-          canJoin: false,
-          disabledReason: "no_patients",
-          actionLabel,
-        }];
-      }
-
-      if (template.type === "collect" || template.type === "convert") {
-        const heartbeatCost = toTaskJsonRecord(template.heartbeat_cost);
-        const hasEnoughHeartbeatResources = hasEnoughResources(resources, heartbeatCost);
-
-        return [{
-          template: templateDto,
-          instance: null,
-          participants: liveTemplateParticipants.get(template.id) ?? 0,
-          canJoin: hasEnoughHeartbeatResources,
-          disabledReason: hasEnoughHeartbeatResources ? null : "insufficient_resource",
-          actionLabel,
-        }];
-      }
-
       const instances = activeInstancesByTemplate.get(template.id) ?? [];
+      const [canJoin, disabledReason] = resolveJoinability(template, resources);
 
       return instances.map((instance) => ({
-        template: templateDto,
+        template: mapTemplateDto(template),
         instance: {
           id: instance.id,
           slotId: instance.slot_id,
           progressMinutes: instance.progress_minutes,
           remainingMinutes: instance.remaining_minutes,
         },
+        building: resolveBuildingDto(instance, buildingById),
         participants: liveInstanceParticipants.get(instance.id) ?? 0,
-        canJoin: true,
-        disabledReason: null,
-        actionLabel,
+        canJoin,
+        disabledReason,
+        actionLabel: getActionLabel(template.type),
       }));
     });
 

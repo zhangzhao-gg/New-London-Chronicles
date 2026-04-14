@@ -49,8 +49,7 @@ type AmbientOption = {
   hint: string;
 };
 
-const FOCUS_BACKGROUND_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCp_o98ut-RPMAIQXKRSfdH7l98-uHemKQHFyZI8BRqWMN196ZvPYC4JxscN7ESJO19-cC6i0sIMHPFBikoMQQvbcaL9VNIj5Zc3Z-ncYcXgBUhnYyJP1zXOL60nuMd8qC2HFpm7vhTvYKV19YIbbY_58QCHGK0c49raa7RobBlMhN-A2tRCCx-TN6DaYhtNYk_Xu0G9OewQfYsFbSVzyL_lu8-Cc0XAalcofXioRE2iNbf3zvFucA01x8RUD0tZ_IgUj7V0L1LfIM";
+const FOCUS_BACKGROUND_URL = "/images/focus-bg.jpg";
 const ADMIN_AVATAR_URL = "/images/admin-avatar.jpg";
 
 const districtLabels: Record<string, string> = {
@@ -60,6 +59,24 @@ const districtLabels: Record<string, string> = {
   residential: "Residential Settlement",
   resource: "Industrial Resource Zone",
 };
+
+const slotDistrictNames: Record<string, string> = {
+  resource: "资源区",
+  food: "食物区",
+  medical: "医疗区",
+  residential: "居住区",
+  exploration: "前哨区",
+};
+
+function formatSlotLabel(slotId: string): string {
+  const dashIndex = slotId.lastIndexOf("-");
+  if (dashIndex < 0) return slotId;
+
+  const district = slotId.slice(0, dashIndex);
+  const index = slotId.slice(dashIndex + 1);
+
+  return `${slotDistrictNames[district] ?? district} ${index}号位`;
+}
 
 const ambientOptions: AmbientOption[] = [
   { id: "focus", label: "Focus", hint: "篝火" },
@@ -310,7 +327,7 @@ export function FocusExperience({
   const [locale, setLocaleState] = useState<Locale>("zh-CN");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showWorkPanel, setShowWorkPanel] = useState(false);
-  const [coworkers, setCoworkers] = useState<{ username: string }[]>([]);
+  const [coworkers, setCoworkers] = useState<{ username: string; startedAt: string | null }[]>([]);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
@@ -419,6 +436,9 @@ export function FocusExperience({
                       type: nextTask.type,
                       name: nextTask.name,
                       district: nextTask.district,
+                      buildingName: nextTask.buildingName,
+                      buildingSlotId: nextTask.buildingSlotId,
+                      buildingLocation: nextTask.buildingLocation,
                     },
                   }
                 : null,
@@ -532,7 +552,12 @@ export function FocusExperience({
   const currentErrorMessage = errorMessage ?? heartbeatErrorMessage;
   const isSessionReady = !isLoading && session != null;
   const canEditDuration = remoteStatus === "pending" || (remoteStatus === "active" && isPaused);
-  const districtLabel = session?.task ? districtLabels[session.task.district] ?? session.task.district : "Free Focus";
+  const districtLabel = session?.task
+    ? session.task.buildingLocation
+      ?? (session.task.buildingSlotId ? formatSlotLabel(session.task.buildingSlotId) : null)
+      ?? districtLabels[session.task.district]
+      ?? session.task.district
+    : "Free Focus";
   const previewMinutes = Number(selectedMinutesInput);
   const displaySeconds =
     remainingSeconds ??
@@ -548,7 +573,11 @@ export function FocusExperience({
     [isPaused, remoteStatus],
   );
 
-  const objectiveSummary = session?.task ? session.task.name : "自由专注";
+  const objectiveSummary = session?.task
+    ? session.task.buildingName
+      ? `${session.task.buildingName} · ${session.task.name}`
+      : session.task.name
+    : "自由专注";
   const systemStatus = remoteStatus === "active" ? "System Active" : isLoading ? "System Restoring" : "System Idle";
   const notices = [
     isLoading ? { key: "loading", tone: "default" as const, message: "Restoring current session..." } : null,
@@ -675,6 +704,7 @@ export function FocusExperience({
               }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,8,10,0.08),rgba(6,8,10,0.4))]" />
+              <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]" />
               <div className="relative flex min-h-full flex-col">
                 {/* ── Shift Objectives ── */}
                 <div>

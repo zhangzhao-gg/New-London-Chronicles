@@ -11,7 +11,7 @@
 `bind-task/route.ts`: `POST /api/session/bind-task`，给已有 session 绑定任务。  
 `unbind-task/route.ts`: `POST /api/session/unbind-task`，解绑当前 session 的任务。  
 `assign-next-task/route.ts`: `POST /api/session/assign-next-task`，自动绑定下一个任务到 active session。  
-`coworkers/route.ts`: `GET /api/session/coworkers`，查询同任务协作者用户名列表（统一查 sessions 表，按 20 分钟心跳新鲜度过滤僵尸）。  
+`coworkers/route.ts`: `GET /api/session/coworkers`，查询同任务协作者（username + startedAt），按 20 分钟心跳新鲜度过滤僵尸。  
 
 法则
 

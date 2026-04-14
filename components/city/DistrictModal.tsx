@@ -15,8 +15,7 @@ import Modal from "@/components/ui/Modal";
 import type { CityDistrict, DistrictKey } from "@/hooks/use-city";
 import { navigateTo } from "@/lib/client-navigation";
 
-const TASK_THUMB_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuBnWRGiluCDGrb96_ij3-apGpLyOIjjvTCH3XjoBNrln-K4juXftlINRWdY6zkCjevg6RRqbWBbaTVbL0dgHkvpUNqXNSWZh3aP6vImBjoQquvKwZQn_dgkW8fiJVJnYkdNnZd5ICqPam5biCfGZNuz3gsbzp00WQ1D212aGY81rvtjNSQhnI-gw9ATsBM8_GEAaCOz34NYYe86L36aTVZWvHFGMx4h0TQqidEbwn6Djo7JuxHxRfu6T388MecqhKfGNLBoBpm-i4w";
+const TASK_THUMB_URL = "/images/city-map-bg.jpg";
 
 type TaskTemplate = {
   id: string;
@@ -39,6 +38,7 @@ type TaskListItem = {
     progressMinutes: number;
     remainingMinutes: number;
   } | null;
+  building: { id: string; name: string; slotId: string; location: string | null } | null;
   participants: number;
   canJoin: boolean;
   disabledReason: "insufficient_resource" | "no_patients" | null;
@@ -84,6 +84,24 @@ const districtCopy: Record<DistrictKey, { title: string; subtitle: string }> = {
     subtitle: "资源区决定煤炭、木材与钢材的供给节奏，是城市心脏外的第二条命脉。",
   },
 };
+
+const slotDistrictNames: Record<string, string> = {
+  resource: "资源区",
+  food: "食物区",
+  medical: "医疗区",
+  residential: "居住区",
+  exploration: "前哨区",
+};
+
+function formatSlotLabel(slotId: string): string {
+  const dashIndex = slotId.lastIndexOf("-");
+  if (dashIndex < 0) return slotId;
+
+  const district = slotId.slice(0, dashIndex);
+  const index = slotId.slice(dashIndex + 1);
+
+  return `${slotDistrictNames[district] ?? district} ${index}号位`;
+}
 
 const resourceLabels: Record<string, string> = {
   coal: "煤炭",
@@ -525,8 +543,13 @@ export function DistrictModal({ district, isStartingFreeFocus = false, onClose, 
                         </p>
                       ) : null}
                       <p className={joinClasses("m-0 font-bold", featured ? "text-sm text-slate-100" : "text-xs text-slate-200")}>
-                        {task.template.name}
+                        {task.building ? `${task.building.name} · ${task.template.name}` : task.template.name}
                       </p>
+                      {task.building ? (
+                        <p className="m-0 mt-0.5 text-[0.6rem] tracking-wide text-[rgba(244,164,98,0.55)]">
+                          ▸ {task.building.location ?? formatSlotLabel(task.building.slotId)}
+                        </p>
+                      ) : null}
                       <p className={joinClasses("m-0 mt-1", featured ? "text-xs text-slate-400" : "text-[11px] text-slate-500")}>
                         {formatTaskEffect(task)}
                       </p>
@@ -536,12 +559,16 @@ export function DistrictModal({ district, isStartingFreeFocus = false, onClose, 
                           <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
                             参与 {task.participants}
                           </span>
-                          <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
-                            已推进 {task.instance.progressMinutes}m
-                          </span>
-                          <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
-                            剩余 {task.instance.remainingMinutes}m
-                          </span>
+                          {task.instance.remainingMinutes > 0 ? (
+                            <>
+                              <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
+                                已推进 {task.instance.progressMinutes}m
+                              </span>
+                              <span className="rounded-full border border-[rgba(244,164,98,0.12)] px-1.5 py-0.5">
+                                剩余 {task.instance.remainingMinutes}m
+                              </span>
+                            </>
+                          ) : null}
                         </div>
                       ) : (
                         <p className="m-0 mt-1 text-[0.65rem] text-white/50">参与人数 {task.participants}</p>

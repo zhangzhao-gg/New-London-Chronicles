@@ -26,6 +26,9 @@ export type FocusTask = {
   type: FocusTaskType;
   name: string;
   district: string;
+  buildingName: string | null;
+  buildingSlotId: string | null;
+  buildingLocation: string | null;
 };
 
 export type FocusSession = {

@@ -55,6 +55,7 @@ export type BuildingRow = {
   name: string;
   district: string;
   slot_id: string;
+  location: string | null;
   completed_at: string;
 };
 
@@ -76,6 +77,7 @@ export type TaskTemplateRow = {
   build_cost: JsonRecord | null;
   heartbeat_cost: JsonRecord | null;
   duration_minutes: number | null;
+  spawns_template_id: string | null;
   enabled: boolean;
   sort_order: number;
 };
@@ -87,6 +89,7 @@ export type TaskInstanceRow = {
   progress_minutes: number;
   remaining_minutes: number;
   slot_id: string | null;
+  building_id: string | null;
   created_at: string;
   completed_at: string | null;
 };

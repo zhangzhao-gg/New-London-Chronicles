@@ -56,6 +56,9 @@ type AssignNextRpcResult = {
   taskName: string;
   taskType: TaskType;
   district: string;
+  buildingName: string | null;
+  buildingSlotId: string | null;
+  buildingLocation: string | null;
 };
 
 type BindTaskRpcResult = {
@@ -64,6 +67,9 @@ type BindTaskRpcResult = {
   taskName: string;
   taskType: TaskType;
   district: string;
+  buildingName: string | null;
+  buildingSlotId: string | null;
+  buildingLocation: string | null;
 };
 
 type HeartbeatResources = {
@@ -556,6 +562,9 @@ export async function assignNextTask(userId: string) {
       type: payload.taskType,
       name: payload.taskName,
       district: payload.district,
+      buildingName: payload.buildingName,
+      buildingSlotId: payload.buildingSlotId,
+      buildingLocation: payload.buildingLocation,
     },
     redirectTo: `/focus?sessionId=${payload.sessionId}`,
   };
@@ -659,6 +668,9 @@ export async function bindTask(input: {
       type: result.taskType,
       name: result.taskName,
       district: result.district,
+      buildingName: result.buildingName,
+      buildingSlotId: result.buildingSlotId,
+      buildingLocation: result.buildingLocation,
     },
   };
 }
@@ -687,6 +699,9 @@ export async function assignNextTaskToSession(userId: string, sessionId: string)
       type: result.taskType,
       name: result.taskName,
       district: result.district,
+      buildingName: result.buildingName,
+      buildingSlotId: result.buildingSlotId,
+      buildingLocation: result.buildingLocation,
     },
   };
 }
