@@ -140,7 +140,7 @@ export function CommsPanel({ logs, locale, language, onTransmit }: CommsPanelPro
           {/* 输入 + 发送 */}
           <form
             className="flex flex-1 flex-col gap-1"
-            onSubmit={(e) => { e.preventDefault(); handleTransmit(); }}
+            onSubmit={(e) => { e.preventDefault(); void handleTransmit(); }}
           >
             <input
               ref={inputRef}

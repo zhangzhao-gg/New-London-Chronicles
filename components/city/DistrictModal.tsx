@@ -14,6 +14,7 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import type { CityDistrict, DistrictKey } from "@/hooks/use-city";
 import { navigateTo } from "@/lib/client-navigation";
+import { joinClasses } from "@/lib/utils";
 
 const TASK_THUMB_URL = "/images/city-map-bg.jpg";
 
@@ -113,10 +114,6 @@ const resourceLabels: Record<string, string> = {
   steamCore: "蒸汽核心",
   wood: "木材",
 };
-
-function joinClasses(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 async function readJson<T>(response: Response): Promise<T | null> {
   try {
