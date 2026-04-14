@@ -67,6 +67,7 @@ export type CityHookState = {
   isStartingFreeFocus: boolean;
   isTaskModalOpen: boolean;
   language: string;
+  refreshCity: (background?: boolean) => Promise<void>;
   setActionMessage: (message: string | null) => void;
   setIsTaskModalOpen: (nextValue: boolean) => void;
   setLanguage: (nextValue: string) => void;
@@ -422,6 +423,7 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
     isStartingFreeFocus,
     isTaskModalOpen,
     language,
+    refreshCity,
     setActionMessage,
     setIsTaskModalOpen,
     setLanguage,

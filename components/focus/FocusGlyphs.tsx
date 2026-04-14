@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 `lib/audio.ts` 的 AmbientSoundId / PlaylistIcon 类型
- * [OUTPUT]: Focus 模块共享 SVG 图标集合（Header / Timer / Todo / 语言切换 / 播放列表）
+ * [OUTPUT]: Focus 模块共享 SVG 图标集合（Header / Timer / Add / Delete / 语言切换 / 播放列表）
  * [POS]: 位于 `components/focus/FocusGlyphs.tsx`，被 FocusExperience 与 MusicPlayer 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/focus/CLAUDE.md`
  */
@@ -132,6 +132,15 @@ export const THEME_ICON_SVG: Record<PlaylistIconType, React.ReactNode> = {
 };
 
 /* ── 待办事项 ── */
+
+export function AddGlyph() {
+  return (
+    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" strokeWidth="1.5" opacity="0.5" />
+      <path d="M12 7.5v9M7.5 12h9" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export function DeleteGlyph() {
   return (

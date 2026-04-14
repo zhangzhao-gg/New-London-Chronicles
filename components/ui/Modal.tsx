@@ -161,7 +161,7 @@ export function Modal({
         aria-labelledby={titleId}
         aria-modal="true"
         className={joinClasses(
-          "nlc-panel nlc-inset nlc-etched relative z-10 w-full overflow-hidden rounded-2xl border text-left",
+          "nlc-panel nlc-inset nlc-etched relative z-10 flex w-full flex-col overflow-hidden rounded-2xl border text-left",
           "max-h-[calc(100vh-3rem)]",
           sizeClasses[size],
           panelClassName,
@@ -187,8 +187,8 @@ export function Modal({
             </span>
           </Button>
         </header>
-        <div className="max-h-[calc(100vh-12rem)] overflow-y-auto px-6 py-5">{children}</div>
-        {footer ? <footer className="border-t border-[rgba(244,164,98,0.14)] px-6 py-4">{footer}</footer> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none px-6 py-5">{children}</div>
+        {footer ? <footer className="shrink-0 border-t border-[rgba(244,164,98,0.14)] px-6 py-4">{footer}</footer> : null}
       </section>
     </div>,
     document.body,

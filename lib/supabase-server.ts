@@ -258,7 +258,7 @@ async function fetchAuthUser(accessToken: string): Promise<AuthUserResponse | nu
 }
 
 type TableRequestOptions = {
-  method?: "GET" | "PATCH";
+  method?: "GET" | "POST" | "PATCH";
   params?: URLSearchParams;
   body?: Record<string, unknown>;
   prefer?: string;
@@ -310,6 +310,14 @@ function buildSelectParams(selectClause: string, extraParams: Record<string, str
 export async function selectRows<T>(table: string, selectClause: string, extraParams: Record<string, string> = {}): Promise<T[]> {
   return tableRequest<T[]>(table, {
     params: buildSelectParams(selectClause, extraParams),
+  });
+}
+
+export async function insertRow(table: string, body: Record<string, unknown>): Promise<void> {
+  await tableRequest<void>(table, {
+    method: "POST",
+    body,
+    prefer: "return=minimal",
   });
 }
 

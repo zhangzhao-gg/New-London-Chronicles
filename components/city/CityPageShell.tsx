@@ -21,6 +21,7 @@ import {
   NavIconPersonnel,
   SettingsGlyph,
 } from "@/components/city/CityIcons";
+import { CommsPanel } from "@/components/city/CommsPanel";
 import DistrictModal from "@/components/city/DistrictModal";
 import Button from "@/components/ui/Button";
 import ResourceIcon, { type ResourceKind } from "@/components/ui/ResourceIcon";
@@ -157,19 +158,7 @@ function statusBadgeClassName(status: DistrictStatus) {
   }
 }
 
-function formatLogTimestamp(value: string, locale: string) {
-  const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
 
 function resourceRows(city: CitySnapshot | null): ResourceRow[] {
   return [
@@ -310,6 +299,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
     isStartingFreeFocus,
     isTaskModalOpen,
     language,
+    refreshCity,
     setActionMessage,
     setIsTaskModalOpen,
     setLanguage,
@@ -529,7 +519,7 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
       </div>
 
       <main className="flex min-h-0 flex-1 flex-col lg:min-h-0 lg:flex-row lg:overflow-hidden">
-        <aside className="border-b border-[rgba(244,164,98,0.14)] bg-[rgba(12,8,5,0.9)] px-3 py-3 lg:flex lg:min-h-0 lg:w-72 lg:flex-col lg:justify-between lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-[rgba(244,164,98,0.14)]">
+        <aside className="border-b border-[rgba(244,164,98,0.14)] bg-[rgba(12,8,5,0.9)] px-3 py-3 lg:flex lg:min-h-0 lg:w-60 lg:flex-col lg:justify-between lg:overflow-y-auto lg:border-b-0 scrollbar-none lg:border-r lg:border-[rgba(244,164,98,0.14)]">
           <div>
             <div className="mb-4 flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
               {navItems.map((item) => (
@@ -549,51 +539,21 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
               ))}
             </div>
 
-            <div className="space-y-4 px-1 lg:px-0">
-              <div className="rounded-sm border border-[rgba(244,164,98,0.2)] bg-[rgba(244,164,98,0.05)] p-3.5">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--nlc-muted)]">{t("sidebar.citizenHope", locale)}</p>
-                  <span className="text-[10px] font-bold tabular-nums text-[var(--nlc-orange)]">65%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[65%] rounded-full bg-[var(--nlc-orange)] shadow-[0_0_8px_rgba(244,164,98,0.5)] transition-all duration-700" />
-                </div>
-              </div>
-
-              <div className="rounded-sm border border-red-900/30 bg-red-950/20 p-3.5">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="m-0 text-[10px] font-black uppercase tracking-[0.2em] text-red-400/70">{t("sidebar.discontent", locale)}</p>
-                  <span className="text-[10px] font-bold tabular-nums text-red-400">28%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full w-[28%] rounded-full bg-red-600 transition-all duration-700" />
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between border-b border-[rgba(244,164,98,0.12)] px-2 pb-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--nlc-orange)]">{t("sidebar.cityLog", locale)}</span>
-                  <span className="text-[10px] text-[var(--nlc-muted)]">{city?.logs.length ?? 0}</span>
-                </div>
-                <div className="max-h-52 space-y-2 overflow-y-auto rounded-sm border border-[rgba(244,164,98,0.08)] bg-black/20 p-2 lg:max-h-[280px]">
-                  {city?.logs.length ? (
-                    city.logs.slice(0, 8).map((entry) => (
-                      <div className="flex gap-2" key={entry.id}>
-                        <span className="whitespace-nowrap font-mono text-[11px] text-[var(--nlc-orange)]/55">
-                          {formatLogTimestamp(entry.createdAt, language)}
-                        </span>
-                        <p className="m-0 text-xs leading-snug text-slate-400">
-                          <span className="text-[var(--nlc-orange)]">{entry.userLabel}</span>
-                          <span className="mx-1 text-slate-600">·</span>
-                          {entry.actionDesc}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="m-0 text-[10px] leading-5 text-[var(--nlc-muted)]">{t("sidebar.telemetrySync", locale)}</p>
-                  )}
-                </div>
-              </div>
+            <div className="px-1 lg:px-0">
+              <CommsPanel
+                logs={city?.logs ?? []}
+                locale={locale}
+                language={language}
+                onTransmit={async (text) => {
+                  const res = await fetch("/api/logs", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text }),
+                  });
+                  if (res.ok) refreshCity(true);
+                  return res.ok;
+                }}
+              />
             </div>
           </div>
         </aside>
