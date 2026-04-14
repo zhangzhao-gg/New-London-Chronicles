@@ -313,6 +313,14 @@ export async function selectRows<T>(table: string, selectClause: string, extraPa
   });
 }
 
+export async function insertRow(table: string, body: Record<string, unknown>): Promise<void> {
+  await tableRequest<void>(table, {
+    method: "POST",
+    body,
+    prefer: "return=minimal",
+  });
+}
+
 export async function patchRows(table: string, filters: Record<string, string>, body: Record<string, unknown>): Promise<void> {
   await tableRequest<void>(table, {
     method: "PATCH",

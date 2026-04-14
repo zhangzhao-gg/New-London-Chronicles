@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import MusicPlayer from "@/components/focus/MusicPlayer";
 import WorkPanel from "@/components/focus/WorkPanel";
 import {
+  AddGlyph,
   AmbientGlyph,
   BackGlyph,
   DeleteGlyph,
@@ -327,8 +328,16 @@ export function FocusExperience({
   const [locale, setLocaleState] = useState<Locale>("zh-CN");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showWorkPanel, setShowWorkPanel] = useState(false);
-  const [coworkers, setCoworkers] = useState<{ username: string; startedAt: string | null }[]>([]);
+  const [coworkers, setCoworkers] = useState<{ username: string; startedAt: string | null }[]>([
+    { username: "Edmund_W", startedAt: new Date(Date.now() - 142 * 60_000).toISOString() },
+    { username: "Clara_M", startedAt: new Date(Date.now() - 53 * 60_000).toISOString() },
+    { username: "Nikolai_V", startedAt: new Date(Date.now() - 8 * 60_000).toISOString() },
+    { username: "Isolde_K", startedAt: new Date(Date.now() - 95 * 60_000).toISOString() },
+    { username: "Fenwick_J", startedAt: new Date(Date.now() - 25 * 60_000).toISOString() },
+    { username: "Margaux_L", startedAt: new Date(Date.now() - 3 * 60_000).toISOString() },
+  ]);
   const newTodoInputRef = useRef<HTMLInputElement>(null);
+  const addTodoFormRef = useRef<HTMLFormElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   /* ── mount 后同步 localStorage locale，避免 SSR hydration mismatch ── */
@@ -464,6 +473,18 @@ export function FocusExperience({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showLangMenu]);
 
+  /* ── 点击表单外部关闭新增 Objective 输入框 ── */
+  useEffect(() => {
+    if (!isAddingTodo) return;
+    function handleClick(e: MouseEvent) {
+      if (addTodoFormRef.current && !addTodoFormRef.current.contains(e.target as Node)) {
+        setIsAddingTodo(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [isAddingTodo]);
+
   const {
     cycleHeartbeatCount,
     errorMessage: heartbeatErrorMessage,
@@ -503,8 +524,7 @@ export function FocusExperience({
     const sid = session?.id;
 
     if (!sid || !taskTemplateId) {
-      setCoworkers([]);
-      return;
+      return; /* 保留初始假数据用于调试 */
     }
 
     let cancelled = false;
@@ -514,7 +534,8 @@ export function FocusExperience({
         const res = await fetch(`/api/session/coworkers?sessionId=${sid}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        if (!cancelled) setCoworkers(data.coworkers ?? []);
+        const real = data.coworkers ?? [];
+        if (!cancelled && real.length > 0) setCoworkers(real);
       } catch { /* 静默 — 下次轮询重试 */ }
     }
 
@@ -736,7 +757,8 @@ export function FocusExperience({
 
                   {isAddingTodo ? (
                     <form
-                      className="mt-3 flex items-center gap-2"
+                      ref={addTodoFormRef}
+                      className="mt-3 flex animate-[slideInFade_0.2s_ease-out] items-center gap-2"
                       onSubmit={(e) => { e.preventDefault(); addTodo(); }}
                     >
                       <input
@@ -749,19 +771,19 @@ export function FocusExperience({
                         value={newTodoText}
                       />
                       <button
-                        className="nlc-focus-ring h-8 rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(244,164,98,0.08)] px-3 text-[0.62rem] uppercase tracking-[0.18em] text-[var(--nlc-orange)] transition-colors hover:bg-[rgba(244,164,98,0.14)]"
+                        className="nlc-focus-ring flex h-8 w-8 items-center justify-center rounded-sm border border-[rgba(244,164,98,0.3)] bg-[rgba(244,164,98,0.08)] text-[var(--nlc-orange)] transition-colors hover:bg-[rgba(244,164,98,0.14)]"
                         type="submit"
                       >
-                        Add
+                        <AddGlyph />
                       </button>
                     </form>
                   ) : (
                     <button
-                      className="nlc-focus-ring mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[var(--nlc-orange)] transition-colors hover:text-[rgba(255,208,165,0.9)]"
+                      className="nlc-focus-ring mt-3 text-[var(--nlc-orange)] transition-colors hover:text-[rgba(255,208,165,0.95)]"
                       onClick={() => setIsAddingTodo(true)}
                       type="button"
                     >
-                      + New Objective
+                      <AddGlyph />
                     </button>
                   )}
                 </div>

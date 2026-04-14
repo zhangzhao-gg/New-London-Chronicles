@@ -422,6 +422,7 @@ export function useCity(initialUser: UserDto, initialCity: CitySnapshot | null =
     isStartingFreeFocus,
     isTaskModalOpen,
     language,
+    refreshCity,
     setActionMessage,
     setIsTaskModalOpen,
     setLanguage,
