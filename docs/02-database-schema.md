@@ -72,6 +72,7 @@ create table public.task_templates (
     check (duration_minutes is null or duration_minutes > 0),
   max_concurrent_instances integer not null default 0
     check (max_concurrent_instances >= 0),
+  spawns_template_id uuid references public.task_templates(id),
   enabled boolean not null default true,
   sort_order integer not null
 );
@@ -86,6 +87,7 @@ create table public.task_instances (
   remaining_minutes integer not null default 0
     check (remaining_minutes >= 0),
   slot_id text,
+  building_id uuid references public.buildings(id),
   locked_by_user_id uuid references public.users(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   completed_at timestamptz
@@ -138,13 +140,14 @@ create table public.sessions (
 
 create table public.buildings (
   id uuid primary key default gen_random_uuid(),
-  instance_id uuid not null unique references public.task_instances(id) on delete restrict,
+  instance_id uuid unique references public.task_instances(id) on delete restrict,
   name text not null,
   participants_label text not null,
   completed_at timestamptz not null,
   slot_id text not null,
   district text not null
-    check (district in ('resource', 'residential', 'medical', 'food', 'exploration'))
+    check (district in ('resource', 'residential', 'medical', 'food', 'exploration')),
+  location text
 );
 
 create table public.city_logs (
@@ -176,6 +179,10 @@ create index users_last_seen_at_idx
 
 create index buildings_district_completed_idx
   on public.buildings (district, completed_at desc);
+
+create index task_instances_building_id_idx
+  on public.task_instances (building_id)
+  where building_id is not null;
 
 create index city_logs_created_at_idx
   on public.city_logs (created_at desc);
@@ -222,9 +229,9 @@ insert into public.city_resources (
 说明：
 
 - `medical-shift` 在 MVP 中可见，但默认 `canJoin = false`，`disabledReason = "no_patients"`。
-- `hunt` 不绑定建筑解锁，MVP 直接可用。
-- `collect-*` 与 `hunt` 不创建 `task_instances`，直接通过 `sessions.task_template_id` 建模。
-- `cookhouse-shift` 与采集类一致，不创建 `task_instances`，直接通过 `sessions.task_template_id` 建模。
+- 所有运营任务（collect/convert/work）均通过 `task_instances` 绑定到建筑，`task_instances.building_id` 指向所属建筑。
+- 5 个预置建筑（煤堆/木材堆/废铁堆/猎人小屋/伙房）在 migration 006 中播种，含对应运营实例。
+- 建造类模板通过 `spawns_template_id` 声明完成后自动生成的运营模板。
 - `last_seen_at` 由登录接口与 `GET /api/city` 更新，用于每日在线用户消耗统计。
 - 当前 MVP 中 `task_instances.locked_by_user_id` 没有启用场景，保留给未来独占任务扩展。
 - 采集类与转化类 session 不做恢复；建造类与工作类 session 允许从 `pending` 或 `active` 恢复。
@@ -249,6 +256,7 @@ insert into public.city_resources (
 - `rpc_create_free_session(p_user_id uuid) returns uuid`
 - `rpc_bind_task(p_user_id uuid, p_session_id uuid, p_template_id uuid, p_instance_id uuid default null) returns jsonb`
 - `rpc_unbind_task(p_user_id uuid, p_session_id uuid, p_unbind_reason text default 'manual_unbind') returns void`
+- `rpc_find_best_task() returns record (found_template_id uuid, found_instance_id uuid)`
 - `rpc_assign_next_task_to_session(p_user_id uuid, p_session_id uuid) returns jsonb`
 - ~~`rpc_task_strategy_tick()`~~ — 已移除，建造补位改由 `POST /api/tasks/strategy` 在应用层执行
 - ~~`rpc_daily_city_upkeep()`~~ — 已移除，城市消耗改由 `lib/cron.ts` 应用层 fallback 执行
@@ -277,7 +285,10 @@ insert into public.city_resources (
   instance_id uuid,
   task_name text,
   task_type text,
-  district text
+  district text,
+  building_name text,
+  building_slot_id text,
+  building_location text
 )
 ```
 
