@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 `lib/i18n` 的 t / Locale，消费 CitySnapshot.logs 数据，POST /api/logs 发送电报
+ * [INPUT]: 依赖 `lib/i18n` 的 t / Locale，消费 CitySnapshot.logs 数据，onTransmit 回调发送电报
  * [OUTPUT]: 对外提供 CommsPanel 电报通讯屏组件
  * [POS]: components/city 的日志展示器，被 CityPageShell 侧边栏消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 `components/city/CLAUDE.md`
@@ -35,12 +35,12 @@ type CommsPanelProps = {
   logs: LogEntry[];
   locale: Locale;
   language: string;
-  onDispatchSent?: () => void;
+  onTransmit: (message: string) => Promise<boolean>;
 };
 
 /* ── Component ── */
 
-export function CommsPanel({ logs, locale, language, onDispatchSent }: CommsPanelProps) {
+export function CommsPanel({ logs, locale, language, onTransmit }: CommsPanelProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,15 +51,8 @@ export function CommsPanel({ logs, locale, language, onDispatchSent }: CommsPane
 
     setIsSending(true);
     try {
-      const res = await fetch("/api/logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
-      if (res.ok) {
-        setMessage("");
-        onDispatchSent?.();
-      }
+      const ok = await onTransmit(text);
+      if (ok) setMessage("");
     } finally {
       setIsSending(false);
       inputRef.current?.focus();

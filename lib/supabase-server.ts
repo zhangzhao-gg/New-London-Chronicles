@@ -258,7 +258,7 @@ async function fetchAuthUser(accessToken: string): Promise<AuthUserResponse | nu
 }
 
 type TableRequestOptions = {
-  method?: "GET" | "PATCH";
+  method?: "GET" | "POST" | "PATCH";
   params?: URLSearchParams;
   body?: Record<string, unknown>;
   prefer?: string;

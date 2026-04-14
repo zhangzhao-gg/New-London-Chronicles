@@ -540,7 +540,20 @@ export function CityPageShell({ initialCity = null, initialUser }: { initialCity
             </div>
 
             <div className="px-1 lg:px-0">
-              <CommsPanel logs={city?.logs ?? []} locale={locale} language={language} onDispatchSent={() => refreshCity(true)} />
+              <CommsPanel
+                logs={city?.logs ?? []}
+                locale={locale}
+                language={language}
+                onTransmit={async (text) => {
+                  const res = await fetch("/api/logs", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text }),
+                  });
+                  if (res.ok) refreshCity(true);
+                  return res.ok;
+                }}
+              />
             </div>
           </div>
         </aside>

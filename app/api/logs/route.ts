@@ -65,15 +65,29 @@ export async function POST(request: NextRequest) {
       return errorResponse(401, "UNAUTHORIZED", "Login required.");
     }
 
-    const body = await request.json();
-    const message = typeof body?.message === "string" ? body.message.trim() : "";
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      const response = errorResponse(400, "BAD_REQUEST", "Invalid JSON body.");
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
+    }
+
+    const message = typeof (body as Record<string, unknown>)?.message === "string"
+      ? ((body as Record<string, unknown>).message as string).trim()
+      : "";
 
     if (!message) {
-      return errorResponse(400, "BAD_REQUEST", "Message is required.");
+      const response = errorResponse(400, "BAD_REQUEST", "Message is required.");
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
     }
 
     if (message.length > MAX_MESSAGE_LENGTH) {
-      return errorResponse(400, "BAD_REQUEST", `Message must be under ${MAX_MESSAGE_LENGTH} characters.`);
+      const response = errorResponse(400, "BAD_REQUEST", `Message must be under ${MAX_MESSAGE_LENGTH} characters.`);
+      appendSupabaseSessionCookieIfRefreshed(response, resolvedSession);
+      return response;
     }
 
     await insertRow("city_logs", {
