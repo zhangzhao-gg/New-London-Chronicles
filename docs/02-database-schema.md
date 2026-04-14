@@ -87,7 +87,7 @@ create table public.task_instances (
   remaining_minutes integer not null default 0
     check (remaining_minutes >= 0),
   slot_id text,
-  building_id uuid references public.buildings(id),
+  building_id uuid,
   locked_by_user_id uuid references public.users(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   completed_at timestamptz
@@ -140,7 +140,7 @@ create table public.sessions (
 
 create table public.buildings (
   id uuid primary key default gen_random_uuid(),
-  instance_id uuid unique references public.task_instances(id) on delete restrict,
+  instance_id uuid unique,
   name text not null,
   participants_label text not null,
   completed_at timestamptz not null,
@@ -149,6 +149,15 @@ create table public.buildings (
     check (district in ('resource', 'residential', 'medical', 'food', 'exploration')),
   location text
 );
+
+-- 循环 FK：两表创建后通过 ALTER TABLE 添加
+alter table public.task_instances
+  add constraint task_instances_building_id_fkey
+  foreign key (building_id) references public.buildings(id);
+
+alter table public.buildings
+  add constraint buildings_instance_id_fkey
+  foreign key (instance_id) references public.task_instances(id) on delete restrict;
 
 create table public.city_logs (
   id bigint generated always as identity primary key,
