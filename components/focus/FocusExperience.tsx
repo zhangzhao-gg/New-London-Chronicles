@@ -44,7 +44,7 @@ type AmbientOption = {
   hint: string;
 };
 
-const FOCUS_BACKGROUND_URL = "/images/focus-bg.jpg";
+const FOCUS_BACKGROUND_URL = "/images/focus-bg-new.jpg";
 const ADMIN_AVATAR_URL = "/images/admin-avatar.jpg";
 
 const districtLabels: Record<string, string> = {
@@ -594,13 +594,19 @@ export function FocusExperience({
             <section
               className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-5"
               style={{
-                backgroundImage: `linear-gradient(180deg,rgba(93,122,153,0.72),rgba(45,58,72,0.54)), linear-gradient(90deg,rgba(18,14,12,0.02),rgba(18,14,12,0.54)), url(${FOCUS_BACKGROUND_URL})`,
-                backgroundPosition: "center",
+                backgroundImage: `url(${FOCUS_BACKGROUND_URL})`,
+                backgroundPosition: "center bottom",
                 backgroundSize: "cover",
               }}
             >
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,8,10,0.08),rgba(6,8,10,0.4))]" />
-              <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]" />
+              {/* ── 中心白雾：提亮图片中央，营造油灯光晕感 ── */}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_40%_35%,rgba(255,240,220,0.12),transparent_70%)]" />
+              {/* ── 暖暗压底：统一压暗但保留暖调 ── */}
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(10,8,6,0.50),rgba(10,8,6,0.70))]" />
+              {/* ── 左右渐暗：两侧收边 ── */}
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(10,8,6,0.48)_0%,transparent_30%,transparent_70%,rgba(10,8,6,0.52)_100%)]" />
+              {/* ── 四周暗角：隧道感收边 ── */}
+              <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_80px_rgba(0,0,0,0.7)]" />
               <div className="relative flex min-h-full flex-col">
                 {/* ── Shift Objectives ── */}
                 <TodoPanel username={initialUser.username} />
